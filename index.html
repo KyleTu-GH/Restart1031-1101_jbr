@@ -69,42 +69,7 @@
     .rest-bg-0 { background-color: #fefce8; } /* 淡黃: 麵五三屋 */
     .rest-bg-1 { background-color: #f0fdf4; } /* 淡綠: 植田割烹 */
     .rest-bg-2 { background-color: #eff6ff; } /* 淡藍: 弎食鉄板 */
-    .rest-bg-3 { background-color: #faf5ff; } /* 淡紫: 湫禾壽喜燒 */
-    .rest-bg-other { background-color: #f8fafc; }
-
-    /* 交通-回程專屬淡色背景 */
-    .trans-in-bg-bus { background-color: #f0fdfa; }   /* 淡藍綠: 遊覽車 */
-    .trans-in-bg-car { background-color: #fefce8; }   /* 淡米黃: 開車 / 自駕 */
-    .trans-in-bg-self { background-color: #f8fafc; }  /* 淡灰白: 自處 */
-    .trans-in-bg-hsr { background-color: #eff6ff; }   /* 淡天藍: 高鐵 / 其他 */
-
-    /* 隊別專屬淡色背景 (總表專用) */
-    .team-bg-white { background-color: #f1f5f9; }    /* 白: 淺灰 */
-    .team-bg-red { background-color: #ffe4e6; }      /* 紅: 淺粉紅 */
-    .team-bg-green { background-color: #ecfdf5; }    /* 綠: 淺綠 */
-    .team-bg-successor { background-color: #fef9c3; }/* 接班人: 淺黃 */
-    .team-bg-default { background-color: #ffffff; }
-
-    /* 飯店專屬淡色背景 */
-    .hotel-bg-0 { background-color: #f0fdfa; } /* 正巧: 淡藍綠 */
-    .hotel-bg-1 { background-color: #fefce8; } /* 知達: 淡金黃 */
-    .hotel-bg-other { background-color: #ffffff; }
-
-    /* 表頭篩選彈窗：手機與桌機自適應及拖曳支援 */
-    #columnFilterPopover {
-      touch-action: none;
-    }
-    @media (max-width: 640px) {
-      #columnFilterPopover {
-        left: 50% !important;
-        top: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        width: 90vw !important;
-        max-width: 340px !important;
-      }
-    }
-
-    /* 關鍵修復：防止 PDF 匯出 / 列印時橫向截斷文字（斷頁裁切保護） */
+    /* 關鍵修復：防止 PDF 匯出 / 列印時橫向截斷文字與跨頁欄位錯位 */
     .pdf-render-mode {
       width: 100% !important;
       max-width: none !important;
@@ -117,21 +82,38 @@
     }
     .pdf-render-mode table {
       width: 100% !important;
-      table-layout: auto !important;
+      border-collapse: collapse !important;
+      table-layout: fixed !important; /* 鎖定欄寬，避免分頁重算導致錯位 */
       page-break-inside: auto;
     }
     .pdf-render-mode thead {
-      display: table-header-group !important;
+      display: table-header-group !important; /* 確保每一頁開頭自動帶有表頭 */
       position: static !important;
+    }
+    .pdf-render-mode thead th {
+      background-color: #f1f5f9 !important;
+      color: #1e293b !important;
+      border-bottom: 2px solid #cbd5e1 !important;
+      font-size: 11px !important;
+      padding: 6px 8px !important;
     }
     .pdf-render-mode tr {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
-    .pdf-render-mode td,
-    .pdf-render-mode th {
+    .pdf-render-mode td {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
+      vertical-align: middle !important; /* 垂直居中對齊，防止跨頁浮動 */
+      padding: 6px 8px !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      font-size: 11px !important;
+      white-space: normal !important;
+      word-break: break-all !important;
+    }
+    .pdf-render-mode td .inline-flex,
+    .pdf-render-mode td .flex {
+      flex-wrap: wrap !important;
     }
 
     @media print {
@@ -141,17 +123,35 @@
       body {
         background: white !important;
         font-size: 10pt !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       .table-container {
         max-height: none !important;
         overflow: visible !important;
       }
-      thead.sticky-header th {
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+      }
+      thead {
+        display: table-header-group !important; /* 列印每頁自動顯示表頭 */
+      }
+      thead th {
         position: static !important;
+        background: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
       tr {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+      }
+      td, th {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        vertical-align: middle !important;
       }
     }
   </style>
@@ -1424,19 +1424,20 @@
 
       pdfHeader.classList.remove('hidden');
 
-      // 啟用專屬 PDF 渲染防斷裂模式
+      // 啟用專屬 PDF 渲染防斷裂與防錯位模式
       exportElement.classList.add('pdf-render-mode');
 
-      // html2pdf 設定：加入多層級避切（avoid-all）規則
+      // html2pdf 設定：移除會破壞 table 結構的 avoid-all，改用標準 CSS 規則
       const opt = {
-        margin: [10, 8, 10, 8],
+        margin: [8, 6, 8, 6],
         filename: `${title}_${new Date().toISOString().slice(0, 10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2, 
           useCORS: true, 
           logging: false,
-          scrollY: 0
+          scrollY: 0,
+          windowWidth: 1200 // 固定渲染寬度避免手機/窄螢幕匯出時擠壓跑版
         },
         jsPDF: { 
           unit: 'mm', 
@@ -1444,8 +1445,8 @@
           orientation: currentTab === 'overview' ? 'landscape' : 'portrait' 
         },
         pagebreak: { 
-          mode: ['avoid-all', 'css', 'legacy'],
-          avoid: ['tr', 'thead', 'h2', 'p'] 
+          mode: ['css', 'legacy'], // 採用標準 CSS 斷頁規則，不強塞空白 spacer
+          avoid: 'tr' 
         }
       };
 

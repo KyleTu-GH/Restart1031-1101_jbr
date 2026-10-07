@@ -69,6 +69,31 @@
     .rest-bg-0 { background-color: #fefce8; } /* 淡黃: 麵五三屋 */
     .rest-bg-1 { background-color: #f0fdf4; } /* 淡綠: 植田割烹 */
     .rest-bg-2 { background-color: #eff6ff; } /* 淡藍: 弎食鉄板 */
+    .rest-bg-3 { background-color: #faf5ff; } /* 淡紫: 湫禾壽喜燒 */
+    .rest-bg-other { background-color: #ffffff; }
+
+    /* 總表隊別淡色系背景 */
+    .team-bg-white { background-color: #f1f5f9; }     /* 白隊: 淺灰色 */
+    .team-bg-red { background-color: #ffe4e6; }       /* 紅隊: 淺粉紅色 */
+    .team-bg-green { background-color: #ecfdf5; }     /* 綠隊: 淺綠色 */
+    .team-bg-successor { background-color: #fef9c3; } /* 接班人: 淺黃色 */
+    .team-bg-default { background-color: #ffffff; }
+
+    /* 交通安排：根據「交通-回程」淡色系背景 */
+    .trans-in-bg-bus { background-color: #f0fdfa; }   /* 淡青綠: 遊覽車/大巴 */
+    .trans-in-bg-car { background-color: #fefce8; }   /* 淡黃米: 開車/自駕 */
+    .trans-in-bg-hsr { background-color: #f0f9ff; }   /* 淡天藍: 高鐵 */
+    .trans-in-bg-self { background-color: #f8fafc; }  /* 淡灰白: 自處/其他 */
+
+    /* 住宿安排：根據「住宿飯店-房型」組合淡色系背景 */
+    .lodging-combo-bg-0 { background-color: #f0fdfa; } /* 正巧-4人房 (淡薄荷) */
+    .lodging-combo-bg-1 { background-color: #ecfeff; } /* 正巧-2人房 (淡青) */
+    .lodging-combo-bg-2 { background-color: #fefce8; } /* 知達-2人房 (淡暖黃) */
+    .lodging-combo-bg-3 { background-color: #faf5ff; } /* 知達-單人房/VIP (淡紫) */
+    .lodging-combo-bg-4 { background-color: #eff6ff; } /* 知達-4人房 (淡藍) */
+    .lodging-combo-bg-5 { background-color: #fdf2f8; } /* 其他 (淡粉紫) */
+    .lodging-combo-bg-default { background-color: #ffffff; }
+
     /* 關鍵修復：防止 PDF 匯出 / 列印時橫向截斷文字與跨頁欄位錯位 */
     .pdf-render-mode {
       width: 100% !important;
@@ -424,6 +449,21 @@
         return 'trans-in-bg-hsr hover:brightness-95';
       }
       return 'trans-in-bg-self hover:brightness-95';
+    }
+
+    // 根據「住宿飯店-房型」組合取得專屬淡色背景樣式
+    function getLodgingComboBgClass(hotel, roomType) {
+      const h = String(hotel || '').trim();
+      const r = String(roomType || '').trim();
+      const combo = `${h}-${r}`;
+
+      if (combo.includes('正巧') && combo.includes('4人')) return 'lodging-combo-bg-0 hover:brightness-95';
+      if (combo.includes('正巧') && combo.includes('2人')) return 'lodging-combo-bg-1 hover:brightness-95';
+      if (combo.includes('知達') && combo.includes('2人')) return 'lodging-combo-bg-2 hover:brightness-95';
+      if (combo.includes('知達') && (combo.includes('單人') || combo.includes('VIP'))) return 'lodging-combo-bg-3 hover:brightness-95';
+      if (combo.includes('知達') && combo.includes('4人')) return 'lodging-combo-bg-4 hover:brightness-95';
+      if (h && r && !h.includes('無住宿')) return 'lodging-combo-bg-5 hover:brightness-95';
+      return 'lodging-combo-bg-default hover:bg-slate-50';
     }
 
     // 應用程式核心狀態
@@ -1090,9 +1130,10 @@
 
         tableBody.innerHTML = dataList.map((item, idx) => {
           const hotelMeta = getHotelMeta(item.hotel);
+          const comboBgClass = getLodgingComboBgClass(item.hotel, item.roomType);
 
           return `
-            <tr class="${hotelMeta.rowClass} transition border-b border-slate-200/60 text-sm">
+            <tr class="${comboBgClass} transition border-b border-slate-200/60 text-sm">
               <td class="py-2.5 px-3 text-center text-xs text-slate-400 font-mono">${idx + 1}</td>
               <td class="py-2.5 px-4 border-r border-slate-200/60 font-bold text-slate-900">
                 <span class="inline-flex items-center gap-2">

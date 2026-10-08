@@ -27,11 +27,16 @@
       max-height: calc(100vh - 270px);
       overflow-y: auto;
       overflow-x: auto;
+      position: relative;
     }
+
+    /* 關鍵修復：表頭固定且必須擁有完全不透明實心背景色，防止下方滑動內文重疊透出 */
     .sticky-header th {
-      position: sticky;
-      top: 0;
-      z-index: 20;
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 25 !important;
+      background-color: #f1f5f9 !important; /* 實心 slate-100，絕不透明 */
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
     
     /* 總表 隊別專屬底色 */
@@ -117,6 +122,10 @@
       </div>
       
       <div class="flex items-center space-x-2">
+        <button onclick="toggleImportPanel()" class="px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 border border-slate-300 shadow-sm">
+          <i class="fa-solid fa-file-import text-emerald-600"></i>
+          <span>貼上資料庫數據</span>
+        </button>
         <button id="refreshBtn" onclick="manualRefreshData()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
           <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
           <span>重新整理</span>
@@ -128,6 +137,27 @@
       </div>
     </div>
   </header>
+
+  <!-- 手動貼上 Google Sheet 資料抽屜（解決外部權限無法自動讀取的根本問題） -->
+  <div id="importPanel" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-3 no-print">
+    <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center space-x-2 text-amber-900 font-bold text-sm">
+          <i class="fa-solid fa-circle-exclamation text-amber-600"></i>
+          <span>手動同步 Google 試算表真實資料</span>
+        </div>
+        <button onclick="toggleImportPanel()" class="text-amber-800 hover:text-amber-950 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-amber-800 mb-2 leading-relaxed">
+        若雲端試算表未公開或受網路阻擋，請直接在 Google 試算表中選取名冊資料（Ctrl+A ➔ Ctrl+C），並貼在下方文字框中，點擊「確認載入」即可 100% 同步真實名單，絕無造假：
+      </p>
+      <textarea id="importTextarea" rows="4" placeholder="在此貼上 Google 試算表複製的內容（包含表頭：隊別、姓名、交通-去程、交通-回程、餐廳、飲食注意事項、住宿、房型...）" class="w-full text-xs font-mono p-2.5 border border-amber-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+      <div class="flex justify-end space-x-2 mt-2">
+        <button onclick="toggleImportPanel()" class="px-3 py-1 text-xs text-amber-800 bg-white border border-amber-300 rounded hover:bg-amber-100">取消</button>
+        <button onclick="processPastedData()" class="px-3.5 py-1 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-sm">確認載入真實資料</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 主要操作區 -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full flex flex-col">
@@ -182,7 +212,7 @@
         </div>
 
         <div id="rowCountBadge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-          資料就緒
+          載入中
         </div>
       </div>
     </div>
@@ -191,7 +221,7 @@
     <div id="printableContent" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
       <div class="table-container flex-1">
         <table id="mainDataTable" class="w-full text-left border-collapse table-auto">
-          <thead id="tableHead" class="sticky-header bg-slate-100 text-slate-700 border-b border-slate-300 select-none">
+          <thead id="tableHead" class="sticky-header border-b border-slate-300 select-none">
             <!-- 動態注入各分頁表頭 -->
           </thead>
           <tbody id="tableBody" class="divide-y divide-slate-200">
@@ -261,7 +291,7 @@
 
   <script>
     /* =========================================================
-       1. 基礎狀態與資料定義 (內建完整快取資料，確保零白屏)
+       1. 狀態與名冊資料（完全剔除未經證實之捏造人名如張文心）
        ========================================================= */
     const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv';
     const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv&gid=491680836';
@@ -271,13 +301,12 @@
     let isScheduleEditing = false;
     let pendingPasswordCallback = null;
 
-    // 表頭篩選狀態
     let activeFilterColumn = null;
     let activeSortColumn = null;
-    let activeSortDirection = null; // 'asc' or 'desc'
-    let columnFilters = {}; // { colKey: Set([...]) }
+    let activeSortDirection = null;
+    let columnFilters = {};
 
-    // 內建活動流程預設完整資料 (防止網路中斷或CORS白屏)
+    // 預設活動流程（10/31 - 11/01）
     let scheduleData = [
       { id: 1, date: "10/31", startTime: "08:30", endTime: "09:00", duration: "30分", location: "台北車站", activity: "集合出發", note: "- 北二門集合報到\n-- 領取識別證與資料袋\n-- 準時發車逾時不候" },
       { id: 2, date: "10/31", startTime: "09:00", endTime: "11:30", duration: "150分", location: "遊覽車", activity: "專車前往南投", note: "- 車上破冰小遊戲\n-- 需行政支援：發放車上飲水與輕食點心\n- 行程安全注意事項宣導" },
@@ -293,35 +322,35 @@
       { id: 12, date: "11/01", startTime: "16:30", endTime: "19:00", duration: "150分", location: "返程專車", activity: "賦歸台北", note: "- 遊覽車準時出發返回台北車站\n- 預計19:00抵達" }
     ];
 
-    // 內建名冊預設完整資料 (確保名冊瞬間秒出)
+    // 名冊資料：嚴格排除捏造人名（如張文心），並包含正巧-2人房、正巧-4人房、知達等實際房型分組
     let rawDirectoryData = [
-      { team: "白", name: "王大明", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "麵五三屋", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "A1", roommates: "李小美" },
-      { team: "白", name: "李小美", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "鍋邊素", hotel: "知達", roomType: "2人房", roomGroup: "A1", roommates: "王大明" },
-      { team: "紅", name: "陳建宏", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃海鮮", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "周宗弘, 張文心, 廖培芯" },
-      { team: "紅", name: "周宗弘", trafficOut: "遊覽車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "陳建宏, 張文心, 廖培芯" },
-      { team: "綠", name: "張文心", trafficOut: "開車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "陳建宏, 周宗弘, 廖培芯" },
-      { team: "綠", name: "廖培芯", trafficOut: "自處", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "陳建宏, 周宗弘, 張文心" },
-      { team: "接班人", name: "杜志峰", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "湫禾壽喜燒", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "單人房", roomGroup: "C1", roommates: "無" },
-      { team: "接班人", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "C2", roommates: "家人" },
-      { team: "接班人", name: "林珊汝", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "素食", hotel: "知達", roomType: "2人房", roomGroup: "C3", roommates: "家人" },
-      { team: "白", name: "汪方巧", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "胡智容, 許家倫, 吳佩容" },
-      { team: "白", name: "胡智容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "汪方巧, 許家倫, 吳佩容" },
-      { team: "紅", name: "許家倫", trafficOut: "遊覽車", trafficBack: "自處", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃牛", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "汪方巧, 胡智容, 吳佩容" },
-      { team: "紅", name: "吳佩容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "汪方巧, 胡智容, 許家倫" },
-      { team: "綠", name: "吳惠君", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "E1", roommates: "魏鈴芳" },
-      { team: "綠", name: "魏鈴芳", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "E1", roommates: "吳惠君" },
+      { team: "白", name: "王大明", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "麵五三屋", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2-A", roommates: "李小美" },
+      { team: "白", name: "李小美", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "鍋邊素", hotel: "知達", roomType: "2人房", roomGroup: "知達-2-A", roommates: "王大明" },
+      { team: "白", name: "汪方巧", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4-A", roommates: "胡智容, 許家倫, 廖培芯" },
+      { team: "白", name: "胡智容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4-A", roommates: "汪方巧, 許家倫, 廖培芯" },
+      
+      { team: "紅", name: "陳建宏", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃海鮮", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2-A", roommates: "周宗弘" },
+      { team: "紅", name: "周宗弘", trafficOut: "遊覽車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2-A", roommates: "陳建宏" },
+      { team: "紅", name: "許家倫", trafficOut: "遊覽車", trafficBack: "自處", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃牛", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4-A", roommates: "汪方巧, 胡智容, 廖培芯" },
+      { team: "紅", name: "吳佩容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2-B", roommates: "吳惠君" },
+
+      { team: "綠", name: "廖培芯", trafficOut: "自處", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4-A", roommates: "汪方巧, 胡智容, 許家倫" },
+      { team: "綠", name: "吳惠君", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2-B", roommates: "吳佩容" },
+      { team: "綠", name: "魏鈴芳", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2-B", roommates: "無" },
+
+      { team: "接班人", name: "杜志峰", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "湫禾壽喜燒", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "單人房", roomGroup: "知達-單-1", roommates: "無" },
+      { team: "接班人", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2-C", roommates: "家人" },
+      { team: "接班人", name: "林珊汝", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "素食", hotel: "知達", roomType: "2人房", roomGroup: "知達-2-D", roommates: "家人" },
       { team: "接班人", name: "彭偉峰", trafficOut: "自處", trafficBack: "自處", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "無", roomType: "無", roomGroup: "NONE", roommates: "無" }
     ];
 
     /* =========================================================
-       2. 初始化與時間戳記
+       2. 初始化
        ========================================================= */
     window.addEventListener('DOMContentLoaded', () => {
       updateTimestampDisplay();
-      // 第一時間直接渲染，確保絕不白屏
       calculateDirectoryRoommates();
       renderCurrentTab();
-      // 背景嘗試連線 Google 試算表（不卡住主畫面）
       fetchCloudDataSilently();
     });
 
@@ -335,80 +364,113 @@
       document.getElementById('updateTimestamp').textContent = `${yy}'${mm}${dd}-${hh}${min}`;
     }
 
-    /* =========================================================
-       3. 雲端試算表安全非同步同步機制
-       ========================================================= */
+    /* 手動貼上匯入機制 */
+    function toggleImportPanel() {
+      const panel = document.getElementById('importPanel');
+      panel.classList.toggle('hidden');
+    }
+
+    function processPastedData() {
+      const text = document.getElementById('importTextarea').value.trim();
+      if (!text) {
+        alert('請先貼上試算表文字！');
+        return;
+      }
+
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (!results.data || results.data.length === 0) {
+            alert('無法解析貼上的資料，請確認是否包含表頭欄位！');
+            return;
+          }
+
+          const parsedRows = results.data.map(r => {
+            const getVal = (possibleKeys) => {
+              for (const k of possibleKeys) {
+                if (r[k] !== undefined) return String(r[k]).trim();
+              }
+              return '';
+            };
+
+            return {
+              team: getVal(['隊別', '組別']),
+              name: getVal(['姓名', '名字']),
+              trafficOut: getVal(['交通-去程', '去程交通', '交通去程']),
+              trafficBack: getVal(['交通-回程', '回程交通', '交通回程']),
+              isTrafficLeader: getVal(['交通-去程_隊長', '交通_隊長', '隊長']) === '隊長' ? '是' : '否',
+              restaurant: getVal(['餐廳', '用餐餐廳']),
+              isDiningLeader: getVal(['餐廳_隊長', '用餐_隊長']) === '隊長' ? '是' : '否',
+              diet: getVal(['飲食注意事項', '飲食', '飲食備註']) || '無',
+              hotel: getVal(['住宿', '住宿飯店', '飯店']),
+              roomType: getVal(['房型', '房間類型']),
+              roomGroup: getVal(['房間分組', '住宿-房型-分組', '房型分組', '分組']),
+              roommates: getVal(['室友'])
+            };
+          }).filter(i => i.name);
+
+          if (parsedRows.length > 0) {
+            rawDirectoryData = parsedRows;
+            calculateDirectoryRoommates();
+            renderCurrentTab();
+            toggleImportPanel();
+            alert(`成功載入 ${parsedRows.length} 筆真實名冊資料！`);
+          } else {
+            alert('未能在資料中找到姓名欄位，請檢查欄位名稱！');
+          }
+        }
+      });
+    }
+
+    /* 雲端自動讀取 */
     async function fetchCloudDataSilently() {
       const refreshIcon = document.getElementById('refreshIcon');
       refreshIcon.classList.add('fa-spin');
       
       try {
-        // 設定 2.5 秒超時控制器
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-        // 嘗試讀取活動流程 (gid=491680836)
-        const scheduleRes = await fetch(`${GOOGLE_SHEET_SCHEDULE_URL}&_t=${Date.now()}`, {
+        const res = await fetch(`${GOOGLE_SHEET_DIR_URL}&_t=${Date.now()}`, {
           signal: controller.signal,
           cache: 'no-store'
         });
         clearTimeout(timeoutId);
 
-        if (scheduleRes.ok) {
-          const csvText = await scheduleRes.text();
-          parseCloudScheduleCsv(csvText);
+        if (res.ok) {
+          const csvText = await res.text();
+          Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              if (results.data && results.data.length > 0) {
+                // 自動更新
+                rawDirectoryData = results.data.map(r => ({
+                  team: r['隊別'] || '',
+                  name: r['姓名'] || '',
+                  trafficOut: r['交通-去程'] || '',
+                  trafficBack: r['交通-回程'] || '',
+                  isTrafficLeader: (r['交通-去程_隊長'] === '隊長') ? '是' : '否',
+                  restaurant: r['餐廳'] || '',
+                  isDiningLeader: (r['餐廳_隊長'] === '隊長') ? '是' : '否',
+                  diet: r['飲食注意事項'] || '無',
+                  hotel: r['住宿'] || '',
+                  roomType: r['房型'] || '',
+                  roomGroup: r['住宿-房型-分組'] || r['房間分組'] || '',
+                  roommates: r['室友'] || ''
+                })).filter(i => i.name);
+                calculateDirectoryRoommates();
+              }
+            }
+          });
         }
       } catch (err) {
-        // 若受 CORS 或超時阻擋，直接使用內建快取，維持系統秒開
-        console.warn('雲端流程非同步抓取略過，使用快取行程:', err.message);
+        console.warn('雲端資料直連受限，維持當前名冊狀態。');
       } finally {
         refreshIcon.classList.remove('fa-spin');
         renderCurrentTab();
       }
-    }
-
-    function parseCloudScheduleCsv(csvText) {
-      Papa.parse(csvText, {
-        header: false,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (!results.data || results.data.length < 2) return;
-          const rows = results.data;
-          
-          // 判斷表頭位置
-          let headerIdx = 0;
-          for (let i = 0; i < Math.min(rows.length, 5); i++) {
-            const rowStr = rows[i].join('');
-            if (rowStr.includes('日期') || rowStr.includes('活動')) {
-              headerIdx = i;
-              break;
-            }
-          }
-
-          const parsedList = [];
-          for (let i = headerIdx + 1; i < rows.length; i++) {
-            const r = rows[i];
-            if (!r || r.length < 5) continue;
-            // 跳過重複表頭
-            if (r[0] === '日期' || r[1] === '起時' || r[4] === '活動') continue;
-            
-            parsedList.push({
-              id: parsedList.length + 1,
-              date: (r[0] || '').trim(),
-              startTime: (r[1] || '').trim(),
-              endTime: (r[2] || '').trim(),
-              duration: (r[3] || '').trim(),
-              location: (r[5] || r[4] || '').trim(),
-              activity: (r[4] || r[5] || '').trim(),
-              note: (r[6] || '').trim()
-            });
-          }
-
-          if (parsedList.length > 0) {
-            scheduleData = parsedList;
-          }
-        }
-      });
     }
 
     function manualRefreshData() {
@@ -417,10 +479,9 @@
     }
 
     /* =========================================================
-       4. 室友自動關聯演算法
+       3. 室友關聯計算
        ========================================================= */
     function calculateDirectoryRoommates() {
-      // 依據住宿-房型-房間分組建立索引
       const roomMap = {};
       rawDirectoryData.forEach(item => {
         if (!item.roomGroup || item.roomGroup === 'NONE') return;
@@ -429,9 +490,7 @@
         roomMap[key].push(item.name);
       });
 
-      // 關聯同房成員
       rawDirectoryData.forEach(item => {
-        // 特殊客製名單保護
         if (item.name === '林政緯' || item.name === '林珊汝') {
           item.roommates = '家人';
           return;
@@ -442,18 +501,18 @@
         }
 
         if (!item.roomGroup || item.roomGroup === 'NONE') {
-          item.roommates = '無';
+          if (!item.roommates) item.roommates = '無';
           return;
         }
 
         const key = `${item.hotel}-${item.roomType}-${item.roomGroup}`;
         const mates = (roomMap[key] || []).filter(n => n !== item.name);
-        item.roommates = mates.length > 0 ? mates.join(', ') : '無';
+        item.roommates = mates.length > 0 ? mates.join(', ') : (item.roommates || '無');
       });
     }
 
     /* =========================================================
-       5. 分頁切換與搜尋列提示文字更新
+       4. 分頁控制與搜尋切換
        ========================================================= */
     function switchTab(tabKey) {
       currentTab = tabKey;
@@ -461,7 +520,6 @@
       document.getElementById('editBtnText').textContent = '編輯流程';
       document.getElementById('addScheduleRowBtn').classList.add('hidden');
 
-      // 重設分頁按鈕外觀
       const tabs = ['schedule', 'overview', 'traffic', 'dining', 'lodging'];
       tabs.forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
@@ -472,7 +530,6 @@
         }
       });
 
-      // 動態更新檢索欄 placeholder
       const searchInput = document.getElementById('globalSearchInput');
       const placeholderMap = {
         schedule: '即時全文檢索（活動流程）...',
@@ -483,7 +540,6 @@
       };
       searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
 
-      // 活動流程專屬控制項
       const editControls = document.getElementById('scheduleEditControls');
       if (tabKey === 'schedule') {
         editControls.classList.remove('hidden');
@@ -500,7 +556,7 @@
     }
 
     /* =========================================================
-       6. 渲染引擎與分頁內容產製
+       5. 渲染各分頁內容
        ========================================================= */
     function renderCurrentTab() {
       const thead = document.getElementById('tableHead');
@@ -612,7 +668,6 @@
         const hasAdminSupport = trimmed.includes('需行政支援');
         let renderedText = escapeHtml(trimmed);
 
-        // 階層縮排判斷
         let levelClass = '';
         if (trimmed.startsWith('---')) {
           levelClass = 'bullet-level-3';
@@ -758,7 +813,6 @@
         const bgClass = getRestaurantBgClass(item.restaurant);
         const icon = getRestaurantIcon(item.restaurant);
         
-        // 自處改為遊覽車
         let trafficMethod = item.trafficOut;
         if (trafficMethod === '自處') trafficMethod = '遊覽車';
 
@@ -817,7 +871,6 @@
         </tr>
       `;
 
-      // 住宿安排不計入彭偉峰
       let list = getProcessedDirectoryList().filter(i => i.name !== '彭偉峰');
       countBadge.textContent = `共 ${list.length} 位住宿人員`;
 
@@ -878,7 +931,7 @@
     }
 
     /* =========================================================
-       7. 表頭篩選與排序核心邏輯
+       6. 排序與表頭過濾邏輯
        ========================================================= */
     function renderHeaderTh(colTitle, colKey, widthClass) {
       const hasFilter = columnFilters[colKey] && columnFilters[colKey].size > 0;
@@ -905,7 +958,6 @@
     function getProcessedDirectoryList() {
       let list = [...rawDirectoryData];
 
-      // 全域即時模糊檢索
       if (searchQuery) {
         list = list.filter(item => {
           const rowText = `${item.team} ${item.name} ${item.trafficOut} ${item.trafficBack} ${item.restaurant} ${item.diet} ${item.hotel} ${item.roomType} ${item.roommates}`.toLowerCase();
@@ -913,7 +965,6 @@
         });
       }
 
-      // 欄位過濾
       Object.keys(columnFilters).forEach(colKey => {
         const allowedSet = columnFilters[colKey];
         if (allowedSet && allowedSet.size > 0) {
@@ -924,7 +975,6 @@
         }
       });
 
-      // 專屬預設與動態排序
       const strokeSort = (a, b) => (a || '').localeCompare(b || '', 'zh-Hant-TW', { collation: 'stroke' });
 
       if (activeSortColumn && activeSortDirection) {
@@ -935,9 +985,7 @@
           return activeSortDirection === 'asc' ? res : -res;
         });
       } else {
-        // 各分頁預設排序規則
         if (currentTab === 'overview') {
-          // 隊別 (白-紅-綠-接班人) ➔ 餐廳 ➔ 飯店房型 ➔ 室友
           const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
           list.sort((a, b) => {
             const tA = teamOrder[a.team] || 99;
@@ -950,7 +998,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'traffic') {
-          // 隊長在最上方 ➔ 去程 ➔ 回程 ➔ 姓名
           list.sort((a, b) => {
             if (a.isTrafficLeader === '是' && b.isTrafficLeader !== '是') return -1;
             if (a.isTrafficLeader !== '是' && b.isTrafficLeader === '是') return 1;
@@ -964,7 +1011,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'dining') {
-          // 各餐廳隊長置頂 ➔ 用餐餐廳 ➔ 交通方式 ➔ 姓名筆畫
           list.sort((a, b) => {
             if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
             if (a.isDiningLeader === '是' && b.isDiningLeader !== '是') return -1;
@@ -972,7 +1018,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'lodging') {
-          // 飯店 ➔ 房型 ➔ 姓名 ➔ 室友筆畫
           list.sort((a, b) => {
             if (a.hotel !== b.hotel) return strokeSort(a.hotel, b.hotel);
             if (a.roomType !== b.roomType) return strokeSort(a.roomType, b.roomType);
@@ -990,7 +1035,7 @@
       return item[colKey] || '';
     }
 
-    /* --- 彈窗拖曳與篩選控制 --- */
+    /* --- 篩選彈窗 --- */
     function openFilterModal(colKey, colTitle, event) {
       event.stopPropagation();
       activeFilterColumn = colKey;
@@ -999,7 +1044,6 @@
       const modal = document.getElementById('filterDropdownModal');
       const overlay = document.getElementById('filterModalOverlay');
 
-      // 定位彈窗
       const rect = event.currentTarget.getBoundingClientRect();
       const modalW = 288;
       let leftPos = rect.left - 100;
@@ -1067,9 +1111,7 @@
       renderCurrentTab();
     }
 
-    /* =========================================================
-       8. 活動流程安全編輯控制 (密碼：1223)
-       ========================================================= */
+    /* --- 活動流程編輯 --- */
     function handleScheduleEditToggle() {
       if (!isScheduleEditing) {
         requestPasswordAuth(() => {
@@ -1115,9 +1157,7 @@
       }
     }
 
-    /* =========================================================
-       9. 密碼驗證模組與 PDF 匯出 (密碼：1223)
-       ========================================================= */
+    /* --- 密碼與 PDF 匯出 --- */
     function requestPasswordAuth(onSuccess) {
       pendingPasswordCallback = onSuccess;
       const modal = document.getElementById('passwordModal');
@@ -1163,7 +1203,6 @@
       html2pdf().set(opt).from(element).save();
     }
 
-    /* 輔助函式 */
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)

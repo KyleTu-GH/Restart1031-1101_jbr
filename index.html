@@ -1,843 +1,982 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>重啟人生-翻轉實驗室 10/31-11/01</title>
-  <!-- Tailwind CSS CDN -->
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome CDN -->
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <!-- PapaParse for CSV reading -->
+  <!-- PapaParse for CSV parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <!-- html2pdf.js for direct PDF export -->
+  <!-- html2pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Noto Sans TC"', 'Inter', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            }
-          }
-        }
-      }
-    }
-  </script>
   <style>
-    body {
-      background-color: #f8fafc;
-      font-family: 'Noto Sans TC', 'Inter', sans-serif;
+    @media print {
+      body { background-color: #fff !important; }
+      .no-print { display: none !important; }
+      thead { display: table-header-group !important; }
+      tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+      .table-container { max-height: none !important; overflow: visible !important; border: none !important; }
     }
-    .custom-scrollbar::-webkit-scrollbar {
-      height: 6px;
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-    /* 表頭凍結樣式 */
+
     .table-container {
-      max-height: calc(100vh - 280px);
-      min-height: 400px;
-      overflow: auto;
+      max-height: calc(100vh - 270px);
+      overflow-y: auto;
+      overflow-x: auto;
     }
-    thead.sticky-header th {
+    .sticky-header th {
       position: sticky;
       top: 0;
       z-index: 20;
     }
-    /* 餐廳淡色系行背景 */
-    .rest-bg-0 { background-color: #fefce8; } /* 淡黃: 麵五三屋 */
-    .rest-bg-1 { background-color: #f0fdf4; } /* 淡綠: 植田割烹 */
-    .rest-bg-2 { background-color: #eff6ff; } /* 淡藍: 弎食鉄板 */
-    .rest-bg-3 { background-color: #faf5ff; } /* 淡紫: 湫禾壽喜燒 */
-    .rest-bg-other { background-color: #ffffff; }
+    
+    /* 總表 隊別專屬底色 */
+    .bg-team-white { background-color: #f1f5f9; }
+    .bg-team-red { background-color: #ffe4e6; }
+    .bg-team-green { background-color: #ecfdf5; }
+    .bg-team-successor { background-color: #fef9c3; }
 
-    /* 總表隊別淡色系背景 */
-    .team-bg-white { background-color: #f1f5f9; }     /* 白隊: 淺灰色 */
-    .team-bg-red { background-color: #ffe4e6; }       /* 紅隊: 淺粉紅色 */
-    .team-bg-green { background-color: #ecfdf5; }     /* 綠隊: 淺綠色 */
-    .team-bg-successor { background-color: #fef9c3; } /* 接班人: 淺黃色 */
-    .team-bg-default { background-color: #ffffff; }
-
-    /* 交通安排：根據「交通-回程」淡色系背景 */
-    .trans-in-bg-bus { background-color: #f0fdfa; }   /* 淡青綠: 遊覽車/大巴 */
-    .trans-in-bg-car { background-color: #fefce8; }   /* 淡黃米: 開車/自駕 */
-    .trans-in-bg-hsr { background-color: #f0f9ff; }   /* 淡天藍: 高鐵 */
-    .trans-in-bg-self { background-color: #f8fafc; }  /* 淡灰白: 自處/其他 */
-
-    /* 住宿安排：根據「住宿飯店-房型」組合淡色系背景 */
-    .lodging-combo-bg-0 { background-color: #f0fdfa; } /* 正巧-4人房 (淡薄荷) */
-    .lodging-combo-bg-1 { background-color: #ecfeff; } /* 正巧-2人房 (淡青) */
-    .lodging-combo-bg-2 { background-color: #fefce8; } /* 知達-2人房 (淡暖黃) */
-    .lodging-combo-bg-3 { background-color: #faf5ff; } /* 知達-單人房/VIP (淡紫) */
-    .lodging-combo-bg-4 { background-color: #eff6ff; } /* 知達-4人房 (淡藍) */
-    .lodging-combo-bg-5 { background-color: #fdf2f8; } /* 其他 (淡粉紫) */
-    .lodging-combo-bg-default { background-color: #ffffff; }
-
-    /* 關鍵修復：防止 PDF 匯出 / 列印時橫向截斷文字與跨頁欄位錯位 */
-    .pdf-render-mode {
-      width: 100% !important;
-      max-width: none !important;
-      overflow: visible !important;
-      background: #ffffff !important;
+    /* 活動流程 階層縮排樣式 */
+    .bullet-level-1 {
+      position: relative;
+      padding-left: 1rem;
+      margin-bottom: 0.25rem;
     }
-    .pdf-render-mode .table-container {
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    .pdf-render-mode table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      table-layout: fixed !important; /* 鎖定欄寬，避免分頁重算導致錯位 */
-      page-break-inside: auto;
-    }
-    .pdf-render-mode thead {
-      display: table-header-group !important; /* 確保每一頁開頭自動帶有表頭 */
-      position: static !important;
-    }
-    .pdf-render-mode thead th {
-      background-color: #f1f5f9 !important;
-      color: #1e293b !important;
-      border-bottom: 2px solid #cbd5e1 !important;
-      font-size: 11px !important;
-      padding: 6px 8px !important;
-    }
-    .pdf-render-mode tr {
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
-    .pdf-render-mode td {
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-      vertical-align: middle !important; /* 垂直居中對齊，防止跨頁浮動 */
-      padding: 6px 8px !important;
-      border-bottom: 1px solid #e2e8f0 !important;
-      font-size: 11px !important;
-      white-space: normal !important;
-      word-break: break-all !important;
-    }
-    .pdf-render-mode td .inline-flex,
-    .pdf-render-mode td .flex {
-      flex-wrap: wrap !important;
+    .bullet-level-1::before {
+      content: "•";
+      position: absolute;
+      left: 0.15rem;
+      top: -0.05rem;
+      font-weight: bold;
+      color: #64748b;
     }
 
-    @media print {
-      header, nav, #searchBarSection, .no-print, .table-filter-btn {
-        display: none !important;
-      }
-      body {
-        background: white !important;
-        font-size: 10pt !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      .table-container {
-        max-height: none !important;
-        overflow: visible !important;
-      }
-      table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        table-layout: fixed !important;
-      }
-      thead {
-        display: table-header-group !important; /* 列印每頁自動顯示表頭 */
-      }
-      thead th {
-        position: static !important;
-        background: #f1f5f9 !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      tr {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      td, th {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-        vertical-align: middle !important;
-      }
+    .bullet-level-2 {
+      position: relative;
+      padding-left: 1.75rem;
+      margin-bottom: 0.25rem;
+    }
+    .bullet-level-2::before {
+      content: "◦";
+      position: absolute;
+      left: 0.85rem;
+      top: -0.05rem;
+      font-weight: bold;
+      color: #94a3b8;
+    }
+
+    .bullet-level-3 {
+      position: relative;
+      padding-left: 2.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .bullet-level-3::before {
+      content: "▪";
+      position: absolute;
+      left: 1.65rem;
+      top: 0rem;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+
+    /* 需行政支援 紫色標記卡片 */
+    .admin-support-item {
+      background: linear-gradient(90deg, #f5f3ff 0%, #faf5ff 100%);
+      border-left: 3px solid #8b5cf6;
+      border-radius: 4px;
+      padding: 3px 8px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+      color: #5b21b6;
+      font-weight: 500;
+    }
+
+    /* 拖曳彈窗 */
+    #filterDropdownModal {
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
     }
   </style>
 </head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
 
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16 py-2.5">
-        <div class="flex items-center space-x-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-xs text-base">
-            <i class="fa-solid fa-list-check"></i>
-          </div>
-          <div class="flex items-baseline gap-2">
-            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">重啟人生-翻轉實驗室 10/31-11/01</h1>
-            <!-- 本次更新日時：小3級字、淺灰色、格式 yy'mmdd-HHmm -->
-            <span id="systemUpdateTimestamp" class="text-[10px] text-slate-400 font-mono select-none" title="本次更新日時"></span>
-          </div>
+  <!-- 頂部導覽列 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow">
+          <i class="fa-solid fa-compass text-lg"></i>
         </div>
-
-        <div class="flex items-center space-x-2">
-          <!-- Live Reload Google Sheet -->
-          <button id="refreshDataBtn" title="重新自 Google Sheet 讀取" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg text-slate-700 hover:text-brand-600 hover:bg-slate-100 border border-slate-200 transition flex items-center gap-1.5">
-            <i class="fa-solid fa-arrows-rotate text-brand-600" id="refreshIcon"></i>
-            <span class="hidden sm:inline">重新整理</span>
-          </button>
-
-          <!-- Export PDF (Password Protected) -->
-          <button id="exportPdfBtn" title="匯出當前分頁為 PDF (限工作人員使用)" class="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg text-white bg-slate-800 hover:bg-slate-900 transition flex items-center gap-1.5 shadow-xs">
-            <i class="fa-solid fa-lock text-amber-300 text-xs"></i>
-            <span>匯出</span>
-            <span class="text-[10px] bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded font-normal hidden sm:inline">限工作人員使用</span>
-          </button>
+        <div class="flex items-baseline space-x-2.5">
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">重啟人生-翻轉實驗室 10/31-11/01</h1>
+          <span id="updateTimestamp" class="text-[10px] text-slate-400 font-mono tracking-tight select-none"></span>
         </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <button id="refreshBtn" onclick="manualRefreshData()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
+          <span>重新整理</span>
+        </button>
+        <button onclick="promptExportPDF()" class="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
+          <i class="fa-solid fa-file-pdf text-rose-400"></i>
+          <span>匯出 (限工作人員使用)</span>
+        </button>
       </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3.5">
-
-    <!-- Navigation Tabs -->
-    <nav class="flex border-b border-slate-200 gap-1.5 bg-white px-3 pt-2 rounded-t-xl border-x overflow-x-auto custom-scrollbar">
-      <button onclick="switchTab('overview')" id="tabBtn-overview" class="tab-btn px-4 py-2.5 text-sm font-bold border-b-2 border-brand-600 text-brand-600 flex items-center gap-2 whitespace-nowrap transition">
-        <i class="fa-solid fa-table-list"></i>
-        <span>總表</span>
-        <span id="tabBadge-overview" class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-brand-50 text-brand-700 font-semibold">0</span>
+  <!-- 主要操作區 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full flex flex-col">
+    
+    <!-- 分頁導航列 -->
+    <div class="flex border-b border-slate-200 overflow-x-auto space-x-2 pb-px no-print select-none">
+      <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-white bg-emerald-600 shadow-sm border-t-2 border-emerald-600">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span>活動流程</span>
       </button>
-
-      <button onclick="switchTab('transport')" id="tabBtn-transport" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 whitespace-nowrap transition">
+      <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+        <i class="fa-solid fa-table-cells"></i>
+        <span>總表</span>
+      </button>
+      <button onclick="switchTab('traffic')" id="tab-traffic" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
         <i class="fa-solid fa-bus"></i>
         <span>交通安排</span>
       </button>
-
-      <button onclick="switchTab('dining')" id="tabBtn-dining" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 whitespace-nowrap transition">
+      <button onclick="switchTab('dining')" id="tab-dining" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
         <i class="fa-solid fa-utensils"></i>
         <span>餐飲安排</span>
       </button>
-
-      <button onclick="switchTab('lodging')" id="tabBtn-lodging" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 whitespace-nowrap transition">
-        <i class="fa-solid fa-hotel"></i>
+      <button onclick="switchTab('lodging')" id="tab-lodging" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+        <i class="fa-solid fa-bed"></i>
         <span>住宿安排</span>
       </button>
-    </nav>
+    </div>
 
-    <!-- Global Full-text Search Bar section -->
-    <section id="searchBarSection" class="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
-      <div class="relative">
-        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+    <!-- 檢索與控制欄 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+      <div class="relative flex-1 max-w-lg">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
         <input 
           type="text" 
           id="globalSearchInput" 
-          placeholder="搜尋總表的「全文檢索」：請輸入姓名、隊別、交通、餐廳、飯店或室友..." 
-          class="w-full pl-10 pr-10 py-2 bg-slate-50 focus:bg-white rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition outline-none text-sm text-slate-800 placeholder-slate-400"
+          oninput="handleSearchInput(this.value)"
+          placeholder="即時全文檢索（活動流程）..." 
+          class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner"
         >
-        <button id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-base">
-          <i class="fa-solid fa-circle-xmark"></i>
-        </button>
       </div>
-    </section>
 
-    <!-- PDF Printable Wrapper Area -->
-    <section id="pdfExportContainer" class="print-area bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-      <!-- Search result meta bar -->
-      <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 text-xs text-slate-600 no-print">
-        <div class="flex items-center gap-2">
-          <span>查詢筆數：<strong id="matchCount" class="text-brand-600 font-bold text-sm">0</strong> 筆</span>
-          <span id="activeSearchQueryBadge" class="hidden px-2 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200"></span>
-          <span id="activeColumnFiltersBadge" class="hidden px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-medium cursor-pointer" onclick="resetColumnFilters()" title="點擊清除所有表頭篩選">
-            已套用表頭篩選 <i class="fa-solid fa-xmark ml-1"></i>
-          </span>
+      <!-- 右側動作狀態按鈕 -->
+      <div class="flex items-center space-x-3">
+        <div id="scheduleEditControls" class="hidden flex items-center space-x-2">
+          <button id="addScheduleRowBtn" onclick="addScheduleRow()" class="hidden px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 rounded hover:bg-emerald-100 transition-colors">
+            <i class="fa-solid fa-plus mr-1"></i>新增一筆
+          </button>
+          <button id="toggleEditModeBtn" onclick="handleScheduleEditToggle()" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 transition-colors flex items-center space-x-1">
+            <i class="fa-solid fa-pen-to-square text-slate-500"></i>
+            <span id="editBtnText">編輯流程</span>
+          </button>
         </div>
-        <div class="flex items-center gap-3 text-slate-500">
-          <span id="sortNoticeText" class="text-xs">點擊表頭可升降冪排序或篩選</span>
+
+        <div id="rowCountBadge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+          資料就緒
         </div>
       </div>
+    </div>
 
-      <!-- PDF Header (Visible when exported to PDF / Printed) -->
-      <div id="pdfHeaderBanner" class="hidden p-4 border-b border-slate-200 text-center">
-        <h2 id="pdfDocumentTitle" class="text-lg font-bold text-slate-900">活動行程名冊</h2>
-        <p class="text-xs text-slate-500 mt-0.5">匯出日期：<span id="pdfExportDate"></span></p>
-      </div>
-
-      <!-- Main Data Table with Sticky Header -->
-      <div id="standardTableWrapper" class="table-container custom-scrollbar">
-        <table id="mainDataTable" class="w-full text-left whitespace-nowrap">
-          <thead id="tableHead" class="sticky-header bg-slate-100 text-slate-700 font-bold border-b border-slate-200 select-none shadow-2xs">
-            <!-- Dynamic Thead -->
+    <!-- 主要資料表格區域 -->
+    <div id="printableContent" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+      <div class="table-container flex-1">
+        <table id="mainDataTable" class="w-full text-left border-collapse table-auto">
+          <thead id="tableHead" class="sticky-header bg-slate-100 text-slate-700 border-b border-slate-300 select-none">
+            <!-- 動態注入各分頁表頭 -->
           </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-100">
-            <!-- Dynamic Tbody -->
+          <tbody id="tableBody" class="divide-y divide-slate-200">
+            <!-- 動態注入各分頁內容 -->
           </tbody>
         </table>
       </div>
-
-      <!-- Empty State Warning -->
-      <div id="noDataAlert" class="hidden py-14 text-center">
-        <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl">
-          <i class="fa-solid fa-magnifying-glass"></i>
-        </div>
-        <p class="text-sm font-bold text-slate-700">查無符合條件的名單</p>
-      </div>
-    </section>
+    </div>
   </main>
 
-  <!-- Backdrop for Column Filter Modal -->
-  <div id="filterBackdrop" class="hidden fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-2xs" onclick="closeColumnFilter()"></div>
-
-  <!-- Header Filter Dropdown / Popover (Draggable & Bounds-Safe) -->
-  <div id="columnFilterPopover" class="hidden fixed z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 w-72 sm:w-80 p-3.5 text-xs space-y-2.5">
-    <div id="filterDragHandle" class="flex items-center justify-between pb-2 border-b border-slate-100 cursor-move select-none">
-      <div class="flex items-center gap-1.5 text-slate-800 font-bold">
-        <i class="fa-solid fa-grip-dots-vertical text-slate-400"></i>
-        <span id="filterColTitle">欄位篩選與排序</span>
+  <!-- 表頭篩選彈窗與遮罩 -->
+  <div id="filterModalOverlay" onclick="closeFilterModal()" class="fixed inset-0 bg-slate-900/30 z-40 hidden backdrop-blur-[1px]"></div>
+  <div id="filterDropdownModal" class="fixed z-50 hidden bg-white rounded-xl border border-slate-300 p-4 w-72 max-w-[92vw] shadow-2xl flex flex-col">
+    <div id="filterModalHeader" class="flex items-center justify-between pb-2 border-b border-slate-200 cursor-move select-none">
+      <div class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+        <i class="fa-solid fa-filter text-emerald-600"></i>
+        <span id="modalColumnTitle">欄位篩選</span>
       </div>
-      <button onclick="closeColumnFilter()" class="text-slate-400 hover:text-slate-600 p-1">
-        <i class="fa-solid fa-xmark text-sm"></i>
+      <button onclick="closeFilterModal()" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+        <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
 
-    <!-- Sort Buttons -->
-    <div class="flex gap-1.5">
-      <button id="btnSortAsc" class="flex-1 py-1.5 px-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1 font-medium transition">
-        <i class="fa-solid fa-arrow-up-a-z text-brand-600"></i> 升冪
+    <div class="py-2.5 space-y-1.5 border-b border-slate-100 text-xs">
+      <button onclick="applySort('asc')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center space-x-2">
+        <i class="fa-solid fa-arrow-down-a-z text-slate-500"></i>
+        <span>依筆畫 / 順序由少到多 (升冪)</span>
       </button>
-      <button id="btnSortDesc" class="flex-1 py-1.5 px-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1 font-medium transition">
-        <i class="fa-solid fa-arrow-down-z-a text-brand-600"></i> 降冪
-      </button>
-      <button id="btnSortReset" class="py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition" title="還原預設排序">
-        <i class="fa-solid fa-rotate-left"></i>
+      <button onclick="applySort('desc')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center space-x-2">
+        <i class="fa-solid fa-arrow-up-z-a text-slate-500"></i>
+        <span>依筆畫 / 順序由多到少 (降冪)</span>
       </button>
     </div>
 
-    <!-- Search in options -->
-    <div>
-      <input type="text" id="filterSearchInput" placeholder="搜尋項目值..." class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs outline-none focus:border-brand-500 focus:bg-white transition">
+    <div class="pt-2 flex-1 flex flex-col">
+      <div class="text-[11px] font-semibold text-slate-500 mb-1.5 flex justify-between items-center">
+        <span>選取資料項目</span>
+        <button onclick="toggleSelectAllFilter()" id="selectAllToggleBtn" class="text-emerald-600 hover:underline">全選 / 全消</button>
+      </div>
+      <input type="text" id="filterValueSearch" oninput="renderFilterCheckboxes(this.value)" placeholder="搜尋此欄項目..." class="w-full px-2 py-1 text-xs border border-slate-200 rounded mb-2 bg-slate-50 focus:bg-white outline-none">
+      <div id="filterCheckboxList" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1 divide-y divide-slate-50">
+        <!-- 核取方塊 -->
+      </div>
     </div>
 
-    <!-- Options Checkbox List -->
-    <div class="flex justify-between text-[11px] text-brand-600 px-0.5">
-      <button type="button" id="btnSelectAllValues" class="hover:underline font-medium">全選</button>
-      <button type="button" id="btnClearAllValues" class="text-slate-400 hover:underline">清除</button>
-    </div>
-    <div id="filterOptionsList" class="max-h-48 overflow-y-auto space-y-1 custom-scrollbar pr-1">
-      <!-- Injected checkboxes -->
-    </div>
-
-    <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-      <button onclick="closeColumnFilter()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-      <button onclick="applyColumnFilter()" class="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-xs">確定</button>
+    <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2 mt-2">
+      <button onclick="closeFilterModal()" class="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded border border-slate-200">取消</button>
+      <button onclick="confirmColumnFilter()" class="px-3 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm">確定</button>
     </div>
   </div>
 
-  <!-- Password Protected Modal for Export -->
-  <div id="passwordModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg flex-shrink-0">
-          <i class="fa-solid fa-shield-halved"></i>
-        </div>
-        <div>
-          <h3 class="text-base font-bold text-slate-900">工作人員驗證</h3>
-          <p class="text-xs text-slate-500">此匯出功能僅限工作人員使用，請輸入通關密碼</p>
-        </div>
+  <!-- 密碼輸入通用彈窗 -->
+  <div id="passwordModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5 border border-slate-200">
+      <div class="flex items-center space-x-2 text-slate-900 font-bold text-base mb-2">
+        <i class="fa-solid fa-lock text-emerald-600"></i>
+        <span id="passwordModalTitle">工作人員身分驗證</span>
       </div>
-
-      <div class="space-y-1.5">
-        <label for="exportPasswordInput" class="block text-xs font-semibold text-slate-700">請輸入密碼</label>
-        <div class="relative">
-          <input 
-            type="password" 
-            id="exportPasswordInput" 
-            placeholder="請輸入密碼" 
-            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm tracking-widest text-slate-800"
-          >
-        </div>
-        <p id="passwordErrorMsg" class="hidden text-xs text-rose-600 font-medium mt-1">密碼不正確，請重新輸入</p>
-      </div>
-
-      <div class="flex justify-end space-x-2 pt-1">
-        <button id="cancelPasswordBtn" class="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold">取消</button>
-        <button id="submitPasswordBtn" class="px-4 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 text-xs font-bold shadow-xs">確認匯出</button>
+      <p id="passwordModalDesc" class="text-xs text-slate-500 mb-3">請輸入管理密碼以執行此操作：</p>
+      <input type="password" id="passwordInput" placeholder="請輸入密碼" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none mb-4 tracking-widest font-mono">
+      <div class="flex items-center justify-end space-x-2">
+        <button onclick="closePasswordModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">取消</button>
+        <button id="passwordConfirmBtn" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">確認</button>
       </div>
     </div>
   </div>
 
   <script>
-    // 預設資料庫：加回「彭偉峰」；室友特定規則（林政緯:家人、林珊汝:家人、杜志峰:無）
-    const DEFAULT_SHEET_DATA = [
-      { id: 1, team: "第1隊", name: "王大明", transportOut: "遊覽車", leaderTransportOut: "隊長", transportIn: "遊覽車", leaderTransportIn: "隊長", restaurant: "麵五三屋", leaderRestaurant: "隊長", dietary: "葷食 (無特殊)", hotel: "正巧", roomType: "4人房", roomGroup: "A101", fullRoomGroup: "正巧-4人房-A101", roommates: "" },
-      { id: 2, team: "第1隊", name: "李小美", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "麵五三屋", leaderRestaurant: "", dietary: "全素食", hotel: "正巧", roomType: "4人房", roomGroup: "A101", fullRoomGroup: "正巧-4人房-A101", roommates: "" },
-      { id: 3, team: "第1隊", name: "張家豪", transportOut: "高鐵 0812車次", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "植田割烹", leaderRestaurant: "隊長", dietary: "不吃牛肉", hotel: "知達", roomType: "2人房", roomGroup: "A102", fullRoomGroup: "知達-2人房-A102", roommates: "" },
-      { id: 4, team: "第2隊", name: "陳冠宇", transportOut: "遊覽車", leaderTransportOut: "隊長", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "弎食鉄板", leaderRestaurant: "", dietary: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B201", fullRoomGroup: "正巧-4人房-B201", roommates: "" },
-      { id: 5, team: "第2隊", name: "林雅婷", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "隊長", restaurant: "弎食鉄板", leaderRestaurant: "隊長", dietary: "蛋奶素", hotel: "正巧", roomType: "4人房", roomGroup: "B201", fullRoomGroup: "正巧-4人房-B201", roommates: "" },
-      { id: 6, team: "第2隊", name: "黃志偉", transportOut: "自處", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "湫禾壽喜燒", leaderRestaurant: "", dietary: "海鮮過敏", hotel: "知達", roomType: "2人房", roomGroup: "B202", fullRoomGroup: "知達-2人房-B202", roommates: "" },
-      { id: 7, team: "第3隊", name: "周佩蓉", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "植田割烹", leaderRestaurant: "", dietary: "鍋邊素", hotel: "知達", roomType: "2人房", roomGroup: "C301", fullRoomGroup: "知達-2人房-C301", roommates: "" },
-      { id: 8, team: "第3隊", name: "吳俊賢", transportOut: "遊覽車", leaderTransportOut: "隊長", transportIn: "遊覽車", leaderTransportIn: "隊長", restaurant: "麵五三屋", leaderRestaurant: "", dietary: "無", hotel: "正巧", roomType: "4人房", roomGroup: "C302", fullRoomGroup: "正巧-4人房-C302", roommates: "" },
-      { id: 9, team: "第3隊", name: "蔡宗憲", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "湫禾壽喜燒", leaderRestaurant: "隊長", dietary: "無", hotel: "正巧", roomType: "4人房", roomGroup: "C302", fullRoomGroup: "正巧-4人房-C302", roommates: "" },
-      { id: 10, team: "第1隊", name: "林政緯", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "弎食鉄板", leaderRestaurant: "", dietary: "無", hotel: "正巧", roomType: "4人房", roomGroup: "A103", fullRoomGroup: "正巧-4人房-A103", roommates: "家人" },
-      { id: 11, team: "第2隊", name: "杜志峰", transportOut: "自處", leaderTransportOut: "", transportIn: "自處", leaderTransportIn: "", restaurant: "湫禾壽喜燒", leaderRestaurant: "", dietary: "全素食", hotel: "知達", roomType: "單人房", roomGroup: "VIP01", fullRoomGroup: "知達-單人房-VIP01", roommates: "無" },
-      { id: 12, team: "第2隊", name: "鄭雅各", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "植田割烹", leaderRestaurant: "", dietary: "葷食 (無特殊)", hotel: "正巧", roomType: "4人房", roomGroup: "B201", fullRoomGroup: "正巧-4人房-B201", roommates: "" },
-      { id: 13, team: "第1隊", name: "彭偉峰", transportOut: "高鐵 0812車次", leaderTransportOut: "", transportIn: "自處", leaderTransportIn: "", restaurant: "麵五三屋", leaderRestaurant: "", dietary: "無", hotel: "無住宿安排", roomType: "無", roomGroup: "", fullRoomGroup: "", roommates: "無" },
-      { id: 14, team: "第3隊", name: "林珊汝", transportOut: "遊覽車", leaderTransportOut: "", transportIn: "遊覽車", leaderTransportIn: "", restaurant: "植田割烹", leaderRestaurant: "", dietary: "無", hotel: "正巧", roomType: "4人房", roomGroup: "C303", fullRoomGroup: "正巧-4人房-C303", roommates: "家人" }
+    /* =========================================================
+       1. 基礎狀態與資料定義 (內建完整快取資料，確保零白屏)
+       ========================================================= */
+    const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv';
+    const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv&gid=491680836';
+
+    let currentTab = 'schedule';
+    let searchQuery = '';
+    let isScheduleEditing = false;
+    let pendingPasswordCallback = null;
+
+    // 表頭篩選狀態
+    let activeFilterColumn = null;
+    let activeSortColumn = null;
+    let activeSortDirection = null; // 'asc' or 'desc'
+    let columnFilters = {}; // { colKey: Set([...]) }
+
+    // 內建活動流程預設完整資料 (防止網路中斷或CORS白屏)
+    let scheduleData = [
+      { id: 1, date: "10/31", startTime: "08:30", endTime: "09:00", duration: "30分", location: "台北車站", activity: "集合出發", note: "- 北二門集合報到\n-- 領取識別證與資料袋\n-- 準時發車逾時不候" },
+      { id: 2, date: "10/31", startTime: "09:00", endTime: "11:30", duration: "150分", location: "遊覽車", activity: "專車前往南投", note: "- 車上破冰小遊戲\n-- 需行政支援：發放車上飲水與輕食點心\n- 行程安全注意事項宣導" },
+      { id: 3, date: "10/31", startTime: "11:45", endTime: "13:15", duration: "90分", location: "各指定餐廳", activity: "午餐饗宴", note: "- 依分組前往四大餐廳：\n-- 麵五三屋、植田割烹、弎食鉄板、湫禾壽喜燒\n- 需行政支援：餐廳帶位與素食專桌確認" },
+      { id: 4, date: "10/31", startTime: "13:30", endTime: "15:00", duration: "90分", location: "知達會館大禮堂", activity: "始業式與開幕工作坊", note: "- 主持人開場與團隊分組誓師\n- 翻轉思維第一講\n-- 需行政支援：音響投影設備與計時" },
+      { id: 5, date: "10/31", startTime: "15:15", endTime: "17:30", duration: "135分", location: "各研習教室", activity: "團隊實戰翻轉工作坊", note: "- OGSM目標管理深度研討\n-- 專案模擬與實作產出\n--- 各組成果發表" },
+      { id: 6, date: "10/31", startTime: "18:00", endTime: "20:00", duration: "120分", location: "正巧宴會廳", activity: "晚宴與星光交流", note: "- 深度交流之夜\n- 需行政支援：晚宴酒水調度與摸彩箱" },
+      { id: 7, date: "10/31", startTime: "20:30", endTime: "22:00", duration: "90分", location: "住宿飯店", activity: "辦理入住與自由休憩", note: "- 正巧書院 / 知達工藝會館各自辦理Check-in\n- 行李放置與休息" },
+      { id: 8, date: "11/01", startTime: "07:30", endTime: "08:30", duration: "60分", location: "飯店餐廳", activity: "晨光早餐與散步", note: "- 自由享用飯店自助早餐\n- 08:45前辦理退房手續" },
+      { id: 9, date: "11/01", startTime: "09:00", endTime: "12:00", duration: "180分", location: "知達會館大禮堂", activity: "二代接班與傳承論壇", note: "- 企業主經驗分享與對談\n-- 利害關係人溝通模組發表\n- 需行政支援：麥克風傳遞與提問卡彙整" },
+      { id: 10, date: "11/01", startTime: "12:15", endTime: "13:45", duration: "90分", location: "特色景觀餐廳", activity: "午餐與交流", note: "- 團體合菜享用\n- 總結心得初探" },
+      { id: 11, date: "11/01", startTime: "14:00", endTime: "16:00", duration: "120分", location: "戶外草坪區", activity: "結業式與翻轉行動宣誓", note: "- 頒發結業認證證書\n-- 大合照留念\n-- 需行政支援：證書準備與大合照站位指引" },
+      { id: 12, date: "11/01", startTime: "16:30", endTime: "19:00", duration: "150分", location: "返程專車", activity: "賦歸台北", note: "- 遊覽車準時出發返回台北車站\n- 預計19:00抵達" }
     ];
 
-    // 嚴格鎖定指定之唯一資料來源 Google Sheet，不作任何外部變更
-    const FIXED_GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/edit?usp=sharing";
+    // 內建名冊預設完整資料 (確保名冊瞬間秒出)
+    let rawDirectoryData = [
+      { team: "白", name: "王大明", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "麵五三屋", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "A1", roommates: "李小美" },
+      { team: "白", name: "李小美", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "鍋邊素", hotel: "知達", roomType: "2人房", roomGroup: "A1", roommates: "王大明" },
+      { team: "紅", name: "陳建宏", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃海鮮", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "周宗弘, 張文心, 廖培芯" },
+      { team: "紅", name: "周宗弘", trafficOut: "遊覽車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "陳建宏, 張文心, 廖培芯" },
+      { team: "綠", name: "張文心", trafficOut: "開車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "陳建宏, 周宗弘, 廖培芯" },
+      { team: "綠", name: "廖培芯", trafficOut: "自處", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "B1", roommates: "陳建宏, 周宗弘, 張文心" },
+      { team: "接班人", name: "杜志峰", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "湫禾壽喜燒", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "單人房", roomGroup: "C1", roommates: "無" },
+      { team: "接班人", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "C2", roommates: "家人" },
+      { team: "接班人", name: "林珊汝", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "素食", hotel: "知達", roomType: "2人房", roomGroup: "C3", roommates: "家人" },
+      { team: "白", name: "汪方巧", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "胡智容, 許家倫, 吳佩容" },
+      { team: "白", name: "胡智容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "汪方巧, 許家倫, 吳佩容" },
+      { team: "紅", name: "許家倫", trafficOut: "遊覽車", trafficBack: "自處", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃牛", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "汪方巧, 胡智容, 吳佩容" },
+      { team: "紅", name: "吳佩容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "D1", roommates: "汪方巧, 胡智容, 許家倫" },
+      { team: "綠", name: "吳惠君", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "E1", roommates: "魏鈴芳" },
+      { team: "綠", name: "魏鈴芳", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "E1", roommates: "吳惠君" },
+      { team: "接班人", name: "彭偉峰", trafficOut: "自處", trafficBack: "自處", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "無", roomType: "無", roomGroup: "NONE", roommates: "無" }
+    ];
 
-    // 中文繁體筆畫排序器
-    const strokeCollator = new Intl.Collator('zh-Hant-TW', { collation: 'stroke', numeric: true });
+    /* =========================================================
+       2. 初始化與時間戳記
+       ========================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      updateTimestampDisplay();
+      // 第一時間直接渲染，確保絕不白屏
+      calculateDirectoryRoommates();
+      renderCurrentTab();
+      // 背景嘗試連線 Google 試算表（不卡住主畫面）
+      fetchCloudDataSilently();
+    });
 
-    // 隊別優先權 (白 -> 紅 -> 綠 -> 接班人)
-    function getTeamPriority(teamName) {
-      const s = String(teamName || '').trim();
-      if (s.includes('白')) return 1;
-      if (s.includes('紅')) return 2;
-      if (s.includes('綠')) return 3;
-      if (s.includes('接班人')) return 4;
-      return 100; // 其他隊別
-    }
-
-    // 根據「隊別」取得總表專屬淡色背景樣式
-    function getTeamBgClass(teamName) {
-      const s = String(teamName || '').trim();
-      if (s.includes('白')) return 'team-bg-white hover:brightness-95';
-      if (s.includes('紅')) return 'team-bg-red hover:brightness-95';
-      if (s.includes('綠')) return 'team-bg-green hover:brightness-95';
-      if (s.includes('接班人')) return 'team-bg-successor hover:brightness-95';
-      return 'team-bg-default hover:bg-slate-50';
-    }
-
-    // 交通優先權 (遊覽車 -> 開車 -> 自處)
-    function getTransportPriority(transName) {
-      const s = String(transName || '').trim();
-      if (s.includes('遊覽車') || s.includes('大巴') || s.includes('巴')) return 1;
-      if (s.includes('開車') || s.includes('自駕')) return 2;
-      if (s.includes('自處') || s.includes('自行') || s.includes('無')) return 3;
-      return 50; // 其他（如高鐵等車次）
-    }
-
-    // 根據「交通-回程」取得專屬淡色背景樣式
-    function getTransportInboundMeta(transIn) {
-      const s = String(transIn || '').trim();
-      if (s.includes('遊覽車') || s.includes('大巴')) {
-        return 'trans-in-bg-bus hover:brightness-95';
-      }
-      if (s.includes('開車') || s.includes('自駕')) {
-        return 'trans-in-bg-car hover:brightness-95';
-      }
-      if (s.includes('高鐵')) {
-        return 'trans-in-bg-hsr hover:brightness-95';
-      }
-      return 'trans-in-bg-self hover:brightness-95';
-    }
-
-    // 根據「住宿飯店-房型」組合取得專屬淡色背景樣式
-    function getLodgingComboBgClass(hotel, roomType) {
-      const h = String(hotel || '').trim();
-      const r = String(roomType || '').trim();
-      const combo = `${h}-${r}`;
-
-      if (combo.includes('正巧') && combo.includes('4人')) return 'lodging-combo-bg-0 hover:brightness-95';
-      if (combo.includes('正巧') && combo.includes('2人')) return 'lodging-combo-bg-1 hover:brightness-95';
-      if (combo.includes('知達') && combo.includes('2人')) return 'lodging-combo-bg-2 hover:brightness-95';
-      if (combo.includes('知達') && (combo.includes('單人') || combo.includes('VIP'))) return 'lodging-combo-bg-3 hover:brightness-95';
-      if (combo.includes('知達') && combo.includes('4人')) return 'lodging-combo-bg-4 hover:brightness-95';
-      if (h && r && !h.includes('無住宿')) return 'lodging-combo-bg-5 hover:brightness-95';
-      return 'lodging-combo-bg-default hover:bg-slate-50';
-    }
-
-    // 應用程式核心狀態
-    let participants = [];
-    let currentTab = 'overview'; // 'overview' | 'transport' | 'dining' | 'lodging'
-
-    // 產生格式為 yy'mmdd-HHmm 的更新日時字串
-    function getFormattedTimestamp() {
+    function updateTimestampDisplay() {
       const now = new Date();
       const yy = String(now.getFullYear()).slice(-2);
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
-      const HH = String(now.getHours()).padStart(2, '0');
-      const MM = String(now.getMinutes()).padStart(2, '0');
-      return `${yy}'${mm}${dd}-${HH}${MM}`;
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('updateTimestamp').textContent = `${yy}'${mm}${dd}-${hh}${min}`;
     }
 
-    function updateTimestampDisplay() {
-      const tsEl = document.getElementById('systemUpdateTimestamp');
-      if (tsEl) {
-        tsEl.innerText = getFormattedTimestamp();
-      }
-    }
-
-    // 表頭欄位篩選與手動排序狀態
-    const columnFilters = {};
-    let activeSort = null;
-
-    // 當前正在開啟篩選彈窗的欄位上下文
-    let currentFilterContext = {
-      columnKey: '',
-      title: '',
-      allValues: [],
-      selectedValues: new Set()
-    };
-
-    function isLeader(val) {
-      if (!val) return false;
-      const s = String(val).trim();
-      return /隊長|組長|是|true|Y|yes/i.test(s);
-    }
-
-    // 計算同房室友（彭偉峰排除；林政緯:家人、林珊汝:家人、杜志峰:無）
-    function calculateRoommates(dataList) {
-      const groupMap = {};
-
-      dataList.forEach(item => {
-        if (item.name === '彭偉峰') return;
-
-        const groupKey = (item.fullRoomGroup && item.fullRoomGroup.trim()) 
-          ? item.fullRoomGroup.trim() 
-          : `${item.hotel || ''}__${item.roomType || ''}__${item.roomGroup || ''}`;
-
-        if (groupKey && !groupKey.includes('無住宿') && groupKey !== '____' && groupKey !== '無') {
-          if (!groupMap[groupKey]) groupMap[groupKey] = [];
-          groupMap[groupKey].push(item.name);
-        }
-      });
-
-      return dataList.map(item => {
-        const nameTrimmed = (item.name || '').trim();
-
-        // 規則特定指定
-        if (nameTrimmed === '林政緯') return { ...item, roommates: '家人' };
-        if (nameTrimmed === '林珊汝') return { ...item, roommates: '家人' };
-        if (nameTrimmed === '杜志峰') return { ...item, roommates: '無' };
-        if (nameTrimmed === '彭偉峰') return { ...item, roommates: '無' };
-
-        if (item.roommates && item.roommates.trim() && item.roommates !== '無 (單人房)') {
-          return item;
-        }
-
-        const groupKey = (item.fullRoomGroup && item.fullRoomGroup.trim()) 
-          ? item.fullRoomGroup.trim() 
-          : `${item.hotel || ''}__${item.roomType || ''}__${item.roomGroup || ''}`;
-
-        const allInRoom = groupMap[groupKey] || [];
-        const otherRoommates = allInRoom.filter(name => name !== item.name);
-
-        return {
-          ...item,
-          roommates: otherRoommates.length > 0 ? otherRoommates.join('、') : '無'
-        };
-      });
-    }
-
-    function getCsvExportUrl(url) {
-      const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-      if (match && match[1]) {
-        // 加上時間戳記避免瀏覽器本機快取舊資料
-        return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&t=${Date.now()}`;
-      }
-      return url;
-    }
-
-    async function loadDataFromGoogleSheet() {
-      // 永遠讀取您指定的試算表
-      const csvUrl = getCsvExportUrl(FIXED_GOOGLE_SHEET_URL);
+    /* =========================================================
+       3. 雲端試算表安全非同步同步機制
+       ========================================================= */
+    async function fetchCloudDataSilently() {
       const refreshIcon = document.getElementById('refreshIcon');
-
       refreshIcon.classList.add('fa-spin');
-
+      
       try {
-        const response = await fetch(csvUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error("無法讀取 Google Sheet CSV");
-        const csvText = await response.text();
-        const parsed = parseSheetCsv(csvText);
+        // 設定 2.5 秒超時控制器
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-        if (parsed.length > 0) {
-          participants = calculateRoommates(parsed);
-          render();
-        } else {
-          throw new Error("試算表無名單資料");
+        // 嘗試讀取活動流程 (gid=491680836)
+        const scheduleRes = await fetch(`${GOOGLE_SHEET_SCHEDULE_URL}&_t=${Date.now()}`, {
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
+
+        if (scheduleRes.ok) {
+          const csvText = await scheduleRes.text();
+          parseCloudScheduleCsv(csvText);
         }
       } catch (err) {
-        console.warn("載入指定 Google 試算表時受到權限或連線限制，使用預設快取資料：", err);
-        if (!participants.length) {
-          participants = calculateRoommates([...DEFAULT_SHEET_DATA]);
-        }
-        render();
+        // 若受 CORS 或超時阻擋，直接使用內建快取，維持系統秒開
+        console.warn('雲端流程非同步抓取略過，使用快取行程:', err.message);
       } finally {
         refreshIcon.classList.remove('fa-spin');
+        renderCurrentTab();
       }
     }
 
-    function parseSheetCsv(csvText) {
-      const results = Papa.parse(csvText.trim(), { skipEmptyLines: true });
-      if (!results.data || results.data.length < 2) return [];
+    function parseCloudScheduleCsv(csvText) {
+      Papa.parse(csvText, {
+        header: false,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (!results.data || results.data.length < 2) return;
+          const rows = results.data;
+          
+          // 判斷表頭位置
+          let headerIdx = 0;
+          for (let i = 0; i < Math.min(rows.length, 5); i++) {
+            const rowStr = rows[i].join('');
+            if (rowStr.includes('日期') || rowStr.includes('活動')) {
+              headerIdx = i;
+              break;
+            }
+          }
 
-      const rows = results.data;
-      const headers = rows[0].map(h => h.trim().replace(/\s+/g, ''));
+          const parsedList = [];
+          for (let i = headerIdx + 1; i < rows.length; i++) {
+            const r = rows[i];
+            if (!r || r.length < 5) continue;
+            // 跳過重複表頭
+            if (r[0] === '日期' || r[1] === '起時' || r[4] === '活動') continue;
+            
+            parsedList.push({
+              id: parsedList.length + 1,
+              date: (r[0] || '').trim(),
+              startTime: (r[1] || '').trim(),
+              endTime: (r[2] || '').trim(),
+              duration: (r[3] || '').trim(),
+              location: (r[5] || r[4] || '').trim(),
+              activity: (r[4] || r[5] || '').trim(),
+              note: (r[6] || '').trim()
+            });
+          }
 
-      const findIndex = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
-
-      const idxTeam = findIndex(['隊別', '組別', '隊伍', 'Team']);
-      const idxName = findIndex(['姓名', '名字', '人員', 'Name']);
-      const idxTransOut = findIndex(['交通-去程', '去程', '出發交通', 'Outbound']);
-      const idxTransIn = findIndex(['交通-回程', '回程', '返程交通', 'Inbound']);
-      const idxRestaurant = findIndex(['餐廳', '用餐餐廳', '餐飲', 'Restaurant']);
-      const idxDietary = findIndex(['飲食注意事項', '飲食', '素食', 'Diet']);
-      const idxHotel = findIndex(['住宿飯店', '住宿', '飯店', 'Hotel']);
-      const idxRoom = findIndex(['房型', '房間', 'Room']);
-
-      const idxLdrTransOut = findIndex(['交通-去程_隊長', '去程隊長', '去程_隊長']);
-      const idxLdrTransIn = findIndex(['交通-回程_隊長', '回程隊長', '回程_隊長']);
-      const idxLdrRest = findIndex(['餐廳_隊長', '用餐_隊長', '餐廳隊長']);
-      const idxLdrGeneral = findIndex(['隊長', '組長', 'Leader']);
-
-      const idxRoomGroup = findIndex(['房間分組', '房號', '分組號']);
-      const idxFullRoomGroup = findIndex(['住宿-房型-分組', '住宿房型分組', '房型分組']);
-      const idxRoommates = findIndex(['室友', '同住者', '同房']);
-
-      const parsedList = [];
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (row.every(cell => !cell || !cell.trim())) continue;
-
-        const generalLeader = (idxLdrGeneral !== -1 && row[idxLdrGeneral]) ? row[idxLdrGeneral].trim() : '';
-        const nameVal = (idxName !== -1 && row[idxName]) ? row[idxName].trim() : (row[1] || '無姓名');
-
-        parsedList.push({
-          id: i,
-          team: (idxTeam !== -1 && row[idxTeam]) ? row[idxTeam].trim() : (row[0] || '未分隊'),
-          name: nameVal,
-          transportOut: (idxTransOut !== -1 && row[idxTransOut]) ? row[idxTransOut].trim() : (row[2] || '自處'),
-          transportIn: (idxTransIn !== -1 && row[idxTransIn]) ? row[idxTransIn].trim() : (row[3] || '自處'),
-          leaderTransportOut: (idxLdrTransOut !== -1 && row[idxLdrTransOut]) ? row[idxLdrTransOut].trim() : generalLeader,
-          leaderTransportIn: (idxLdrTransIn !== -1 && row[idxLdrTransIn]) ? row[idxLdrTransIn].trim() : generalLeader,
-          restaurant: (idxRestaurant !== -1 && row[idxRestaurant]) ? row[idxRestaurant].trim() : (row[4] || '未指定'),
-          leaderRestaurant: (idxLdrRest !== -1 && row[idxLdrRest]) ? row[idxLdrRest].trim() : generalLeader,
-          dietary: (idxDietary !== -1 && row[idxDietary]) ? row[idxDietary].trim() : (row[5] || '無'),
-          hotel: (idxHotel !== -1 && row[idxHotel]) ? row[idxHotel].trim() : (row[6] || '無住宿安排'),
-          roomType: (idxRoom !== -1 && row[idxRoom]) ? row[idxRoom].trim() : (row[7] || '無'),
-          roomGroup: (idxRoomGroup !== -1 && row[idxRoomGroup]) ? row[idxRoomGroup].trim() : '',
-          fullRoomGroup: (idxFullRoomGroup !== -1 && row[idxFullRoomGroup]) ? row[idxFullRoomGroup].trim() : '',
-          roommates: (idxRoommates !== -1 && row[idxRoommates]) ? row[idxRoommates].trim() : ''
-        });
-      }
-      return parsedList;
-    }
-
-    // 取得資料行對應欄位純文字值
-    function getColumnValue(item, key) {
-      if (!item) return '';
-      switch (key) {
-        case 'name': return item.name || '';
-        case 'team': return item.team || '';
-        case 'transCombo': return `${item.transportOut || '自處'}/${item.transportIn || '自處'}`;
-        case 'transportOut': {
-          // 餐飲安排分頁時，「自處」替換為「遊覽車」
-          const val = item.transportOut || '自處';
-          if (currentTab === 'dining' && val === '自處') return '遊覽車';
-          return val;
+          if (parsedList.length > 0) {
+            scheduleData = parsedList;
+          }
         }
-        case 'transportIn': return item.transportIn || '自處';
-        case 'restaurant': return item.restaurant || '';
-        case 'dietary': return item.dietary || '無';
-        case 'hotel': return item.hotel || '無住宿安排';
-        case 'roomType': return item.roomType || '無';
-        case 'hotelRoomCombo': return `${item.hotel || '無'}-${item.roomType || '無'}`;
-        case 'roommates': return item.roommates || '無';
-        default: return item[key] ? String(item[key]) : '';
+      });
+    }
+
+    function manualRefreshData() {
+      updateTimestampDisplay();
+      fetchCloudDataSilently();
+    }
+
+    /* =========================================================
+       4. 室友自動關聯演算法
+       ========================================================= */
+    function calculateDirectoryRoommates() {
+      // 依據住宿-房型-房間分組建立索引
+      const roomMap = {};
+      rawDirectoryData.forEach(item => {
+        if (!item.roomGroup || item.roomGroup === 'NONE') return;
+        const key = `${item.hotel}-${item.roomType}-${item.roomGroup}`;
+        if (!roomMap[key]) roomMap[key] = [];
+        roomMap[key].push(item.name);
+      });
+
+      // 關聯同房成員
+      rawDirectoryData.forEach(item => {
+        // 特殊客製名單保護
+        if (item.name === '林政緯' || item.name === '林珊汝') {
+          item.roommates = '家人';
+          return;
+        }
+        if (item.name === '杜志峰') {
+          item.roommates = '無';
+          return;
+        }
+
+        if (!item.roomGroup || item.roomGroup === 'NONE') {
+          item.roommates = '無';
+          return;
+        }
+
+        const key = `${item.hotel}-${item.roomType}-${item.roomGroup}`;
+        const mates = (roomMap[key] || []).filter(n => n !== item.name);
+        item.roommates = mates.length > 0 ? mates.join(', ') : '無';
+      });
+    }
+
+    /* =========================================================
+       5. 分頁切換與搜尋列提示文字更新
+       ========================================================= */
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      isScheduleEditing = false;
+      document.getElementById('editBtnText').textContent = '編輯流程';
+      document.getElementById('addScheduleRowBtn').classList.add('hidden');
+
+      // 重設分頁按鈕外觀
+      const tabs = ['schedule', 'overview', 'traffic', 'dining', 'lodging'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tabKey) {
+          btn.className = "tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-white bg-emerald-600 shadow-sm border-t-2 border-emerald-600";
+        } else {
+          btn.className = "tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100";
+        }
+      });
+
+      // 動態更新檢索欄 placeholder
+      const searchInput = document.getElementById('globalSearchInput');
+      const placeholderMap = {
+        schedule: '即時全文檢索（活動流程）...',
+        overview: '即時全文檢索（總表）...',
+        traffic: '即時全文檢索（交通安排）...',
+        dining: '即時全文檢索（餐飲安排）...',
+        lodging: '即時全文檢索（住宿安排）...'
+      };
+      searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
+
+      // 活動流程專屬控制項
+      const editControls = document.getElementById('scheduleEditControls');
+      if (tabKey === 'schedule') {
+        editControls.classList.remove('hidden');
+      } else {
+        editControls.classList.add('hidden');
+      }
+
+      renderCurrentTab();
+    }
+
+    function handleSearchInput(val) {
+      searchQuery = val.trim().toLowerCase();
+      renderCurrentTab();
+    }
+
+    /* =========================================================
+       6. 渲染引擎與分頁內容產製
+       ========================================================= */
+    function renderCurrentTab() {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      const countBadge = document.getElementById('rowCountBadge');
+
+      if (currentTab === 'schedule') {
+        renderScheduleTab(thead, tbody, countBadge);
+      } else if (currentTab === 'overview') {
+        renderOverviewTab(thead, tbody, countBadge);
+      } else if (currentTab === 'traffic') {
+        renderTrafficTab(thead, tbody, countBadge);
+      } else if (currentTab === 'dining') {
+        renderDiningTab(thead, tbody, countBadge);
+      } else if (currentTab === 'lodging') {
+        renderLodgingTab(thead, tbody, countBadge);
       }
     }
 
-    // 渲染室友膠囊標籤
-    function renderRoommateChips(roommatesStr, isSmall = false) {
-      const val = (roommatesStr || '').trim();
-      if (!val || val === '無') {
-        return `<span class="text-slate-400 bg-slate-100 px-2 py-0.5 rounded text-xs">無</span>`;
+    /* --- [分頁1] 活動流程 --- */
+    function renderScheduleTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-xs">
+          <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">日期</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">起時</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">迄時</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">時長</th>
+          <th class="py-2.5 px-3 w-32">地點</th>
+          <th class="py-2.5 px-3 min-w-[12rem]">活動</th>
+          <th class="py-2.5 px-3 min-w-[18rem] flex-1">說明</th>
+          ${isScheduleEditing ? '<th class="py-2.5 px-2 w-12 text-center text-rose-500">刪除</th>' : ''}
+        </tr>
+      `;
+
+      let list = scheduleData.filter(item => {
+        if (!searchQuery) return true;
+        const text = `${item.date} ${item.startTime} ${item.endTime} ${item.duration} ${item.location} ${item.activity} ${item.note}`.toLowerCase();
+        return text.includes(searchQuery);
+      });
+
+      countBadge.textContent = `共 ${list.length} 項流程`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${isScheduleEditing ? 9 : 8}" class="py-12 text-center text-slate-400 text-sm">無符合的活動流程資料</td></tr>`;
+        return;
       }
-      if (val === '家人') {
-        return `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-medium ${isSmall ? 'text-xs' : 'text-sm'}"><i class="fa-solid fa-people-roof text-xs text-amber-600"></i>家人</span>`;
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getScheduleRowBg(item.date, item.startTime);
+        
+        if (isScheduleEditing) {
+          return `
+            <tr class="text-xs border-b border-slate-200 ${bgClass}">
+              <td class="py-2 px-2 text-center text-slate-400">${idx + 1}</td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.date)}" onchange="updateScheduleCell(${item.id}, 'date', this.value)"></td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.startTime)}" onchange="updateScheduleCell(${item.id}, 'startTime', this.value)"></td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.endTime)}" onchange="updateScheduleCell(${item.id}, 'endTime', this.value)"></td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.duration)}" onchange="updateScheduleCell(${item.id}, 'duration', this.value)"></td>
+              <td class="p-1"><input class="w-full bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.location)}" onchange="updateScheduleCell(${item.id}, 'location', this.value)"></td>
+              <td class="p-1"><input class="w-full font-semibold bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.activity)}" onchange="updateScheduleCell(${item.id}, 'activity', this.value)"></td>
+              <td class="p-1"><textarea rows="2" class="w-full bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'note', this.value)">${escapeHtml(item.note)}</textarea></td>
+              <td class="p-1 text-center">
+                <button onclick="deleteScheduleRow(${item.id})" class="text-rose-500 hover:text-rose-700 p-1.5"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>
+          `;
+        }
+
+        return `
+          <tr class="text-xs border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-2.5 px-2 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-2.5 px-1.5 text-center font-medium text-slate-700 whitespace-nowrap">${escapeHtml(item.date)}</td>
+            <td class="py-2.5 px-1.5 text-center font-mono text-slate-600 whitespace-nowrap">${escapeHtml(item.startTime)}</td>
+            <td class="py-2.5 px-1.5 text-center font-mono text-slate-600 whitespace-nowrap">${escapeHtml(item.endTime)}</td>
+            <td class="py-2.5 px-1.5 text-center text-slate-400 italic whitespace-nowrap">${escapeHtml(item.duration)}</td>
+            <td class="py-2.5 px-3 font-medium text-slate-700 break-words">${escapeHtml(item.location)}</td>
+            <td class="py-2.5 px-3 font-bold text-slate-900 break-words">${escapeHtml(item.activity)}</td>
+            <td class="py-2.5 px-3 text-slate-700 break-words leading-relaxed">${formatScheduleNote(item.note)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getScheduleRowBg(date, startTime) {
+      const is1031 = String(date).includes('31');
+      let hour = 0;
+      if (startTime) {
+        const parts = startTime.split(':');
+        hour = parseInt(parts[0], 10) || 0;
       }
-      const names = val.split(/[、,，\s]+/).filter(Boolean);
+      const isBeforeNoon = hour < 12;
+
+      if (is1031) {
+        return isBeforeNoon ? 'bg-blue-50/70 hover:bg-blue-50' : 'bg-purple-50/70 hover:bg-purple-50';
+      } else {
+        return isBeforeNoon ? 'bg-emerald-50/70 hover:bg-emerald-50' : 'bg-amber-50/70 hover:bg-amber-50';
+      }
+    }
+
+    function formatScheduleNote(text) {
+      if (!text) return '<span class="text-slate-300">-</span>';
+      const lines = text.split('\n');
+      
+      return lines.map(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return '';
+
+        const hasAdminSupport = trimmed.includes('需行政支援');
+        let renderedText = escapeHtml(trimmed);
+
+        // 階層縮排判斷
+        let levelClass = '';
+        if (trimmed.startsWith('---')) {
+          levelClass = 'bullet-level-3';
+          renderedText = escapeHtml(trimmed.replace(/^---+/, '').trim());
+        } else if (trimmed.startsWith('--')) {
+          levelClass = 'bullet-level-2';
+          renderedText = escapeHtml(trimmed.replace(/^--+/, '').trim());
+        } else if (trimmed.startsWith('-')) {
+          levelClass = 'bullet-level-1';
+          renderedText = escapeHtml(trimmed.replace(/^-+/, '').trim());
+        }
+
+        if (hasAdminSupport) {
+          return `<div class="${levelClass} admin-support-item"><i class="fa-solid fa-bell mr-1 text-purple-600"></i>${renderedText}</div>`;
+        }
+
+        return `<div class="${levelClass}">${renderedText}</div>`;
+      }).join('');
+    }
+
+    /* --- [分頁2] 總表 --- */
+    function renderOverviewTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('姓名', 'name', 'w-24')}
+          ${renderHeaderTh('隊別', 'team', 'w-24')}
+          ${renderHeaderTh('交通-去/回', 'trafficCombo', 'w-36')}
+          ${renderHeaderTh('用餐餐廳', 'restaurant', 'w-32')}
+          ${renderHeaderTh('住宿飯店-房型', 'lodgingCombo', 'w-36')}
+          ${renderHeaderTh('室友', 'roommates', '')}
+        </tr>
+      `;
+
+      let list = getProcessedDirectoryList();
+      countBadge.textContent = `共 ${list.length} 位人員`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400 text-sm">無符合的人員資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const teamBg = getTeamBgClass(item.team);
+        const trafficCombo = `${item.trafficOut || '無'}/${item.trafficBack || '無'}`;
+        const lodgingCombo = `${item.hotel}-${item.roomType}`;
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${teamBg}">
+            <td class="py-3 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-3 px-3 font-bold text-slate-900">${escapeHtml(item.name)}</td>
+            <td class="py-3 px-3 font-semibold text-slate-700">${escapeHtml(item.team)}</td>
+            <td class="py-3 px-3 text-slate-700">${escapeHtml(trafficCombo)}</td>
+            <td class="py-3 px-3 font-medium text-slate-800">${escapeHtml(item.restaurant)}</td>
+            <td class="py-3 px-3 text-slate-700">${escapeHtml(lodgingCombo)}</td>
+            <td class="py-3 px-3">${renderRoommateChips(item.roommates)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getTeamBgClass(team) {
+      if (team === '白') return 'bg-team-white hover:bg-slate-200/50';
+      if (team === '紅') return 'bg-team-red hover:bg-rose-100/60';
+      if (team === '綠') return 'bg-team-green hover:bg-emerald-100/60';
+      if (team === '接班人') return 'bg-team-successor hover:bg-amber-100/60';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    /* --- [分頁3] 交通安排 --- */
+    function renderTrafficTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('姓名', 'name', 'w-36')}
+          ${renderHeaderTh('交通-去程', 'trafficOut', 'w-36')}
+          ${renderHeaderTh('交通-回程', 'trafficBack', 'w-36')}
+        </tr>
+      `;
+
+      let list = getProcessedDirectoryList();
+      countBadge.textContent = `共 ${list.length} 位人員`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 text-sm">無符合的交通資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getTrafficBackBgClass(item.trafficBack);
+        const leaderBadge = getTrafficLeaderBadge(item);
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-3 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-3 px-3">
+              <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
+              ${leaderBadge}
+            </td>
+            <td class="py-3 px-3 font-semibold text-slate-800">${escapeHtml(item.trafficOut)}</td>
+            <td class="py-3 px-3 font-semibold text-slate-800">${escapeHtml(item.trafficBack)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getTrafficBackBgClass(trafficBack) {
+      if (trafficBack === '遊覽車') return 'bg-teal-50/70 hover:bg-teal-50';
+      if (trafficBack === '開車') return 'bg-amber-50/70 hover:bg-amber-50';
+      if (trafficBack === '高鐵') return 'bg-sky-50/70 hover:bg-sky-50';
+      if (trafficBack === '自處') return 'bg-slate-100/60 hover:bg-slate-100';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    function getTrafficLeaderBadge(item) {
+      if (item.isTrafficLeader === '是') {
+        return `<div class="text-[11px] font-semibold text-rose-600 mt-0.5">（遊覽車 隊長）</div>`;
+      }
+      return '';
+    }
+
+    /* --- [分頁4] 餐飲安排 --- */
+    function renderDiningTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('用餐餐廳', 'restaurant', 'w-36')}
+          ${renderHeaderTh('姓名', 'name', 'w-36')}
+          ${renderHeaderTh('飲食注意事項', 'diet', 'w-44')}
+          ${renderHeaderTh('交通方式', 'trafficOut', 'w-36')}
+        </tr>
+      `;
+
+      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無');
+      countBadge.textContent = `共 ${list.length} 位用餐人員`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的餐飲資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getRestaurantBgClass(item.restaurant);
+        const icon = getRestaurantIcon(item.restaurant);
+        
+        // 自處改為遊覽車
+        let trafficMethod = item.trafficOut;
+        if (trafficMethod === '自處') trafficMethod = '遊覽車';
+
+        const isDietNone = !item.diet || item.diet === '無';
+        const dietDisplay = isDietNone 
+          ? `<span class="text-slate-400">無</span>`
+          : `<span class="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">${escapeHtml(item.diet)}</span>`;
+
+        const leaderBadge = item.isDiningLeader === '是'
+          ? `<div class="text-[11px] font-semibold text-rose-600 mt-0.5">（遊覽車 隊長）</div>`
+          : '';
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-3 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-3 px-3 font-bold text-slate-800 flex items-center space-x-1.5">
+              ${icon}
+              <span>${escapeHtml(item.restaurant)}</span>
+            </td>
+            <td class="py-3 px-3">
+              <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
+              ${leaderBadge}
+            </td>
+            <td class="py-3 px-3">${dietDisplay}</td>
+            <td class="py-3 px-3 font-medium text-slate-700">${escapeHtml(trafficMethod)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getRestaurantBgClass(rest) {
+      if (rest.includes('麵五三')) return 'bg-amber-50/60 hover:bg-amber-50';
+      if (rest.includes('植田')) return 'bg-emerald-50/60 hover:bg-emerald-50';
+      if (rest.includes('弎食')) return 'bg-rose-50/60 hover:bg-rose-50';
+      if (rest.includes('湫禾')) return 'bg-indigo-50/60 hover:bg-indigo-50';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    function getRestaurantIcon(rest) {
+      if (rest.includes('麵五三')) return '<i class="fa-solid fa-bowl-food text-amber-600"></i>';
+      if (rest.includes('植田')) return '<i class="fa-solid fa-fish text-emerald-600"></i>';
+      if (rest.includes('弎食')) return '<i class="fa-solid fa-fire-burner text-rose-600"></i>';
+      if (rest.includes('湫禾')) return '<i class="fa-solid fa-plate-wheat text-indigo-600"></i>';
+      return '<i class="fa-solid fa-utensils text-slate-500"></i>';
+    }
+
+    /* --- [分頁5] 住宿安排 --- */
+    function renderLodgingTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('住宿飯店', 'hotel', 'w-32')}
+          ${renderHeaderTh('房型', 'roomType', 'w-28')}
+          ${renderHeaderTh('姓名', 'name', 'w-32')}
+          ${renderHeaderTh('同房室友', 'roommates', '')}
+        </tr>
+      `;
+
+      // 住宿安排不計入彭偉峰
+      let list = getProcessedDirectoryList().filter(i => i.name !== '彭偉峰');
+      countBadge.textContent = `共 ${list.length} 位住宿人員`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的住宿資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getLodgingComboBgClass(item.hotel, item.roomType);
+        const hotelIcon = item.hotel.includes('正巧')
+          ? '<i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>'
+          : '<i class="fa-solid fa-landmark text-sky-600 mr-1.5"></i>';
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-3 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-3 px-3 font-bold text-slate-800 flex items-center">
+              ${hotelIcon}
+              <span>${escapeHtml(item.hotel)}</span>
+            </td>
+            <td class="py-3 px-3 font-semibold text-slate-700">${escapeHtml(item.roomType)}</td>
+            <td class="py-3 px-3 font-bold text-slate-900">${escapeHtml(item.name)}</td>
+            <td class="py-3 px-3">${renderRoommateChips(item.roommates)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getLodgingComboBgClass(hotel, roomType) {
+      const combo = `${hotel}-${roomType}`;
+      if (combo.includes('正巧-4人')) return 'bg-emerald-50/60 hover:bg-emerald-50';
+      if (combo.includes('正巧-2人')) return 'bg-teal-50/60 hover:bg-teal-50';
+      if (combo.includes('知達-2人')) return 'bg-sky-50/60 hover:bg-sky-50';
+      if (combo.includes('知達-單人')) return 'bg-indigo-50/60 hover:bg-indigo-50';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    function renderRoommateChips(roommatesStr) {
+      if (!roommatesStr || roommatesStr === '無') {
+        return `<span class="text-slate-400 text-xs">無</span>`;
+      }
+      if (roommatesStr === '家人') {
+        return `<span class="inline-block bg-purple-100 text-purple-800 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-purple-200">家人</span>`;
+      }
+
+      const names = roommatesStr.split(/[,、]/).map(n => n.trim()).filter(Boolean);
       return `
-        <div class="flex flex-wrap gap-1.5 items-center">
-          ${names.map(n => `
-            <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded font-bold shadow-2xs ${isSmall ? 'text-xs' : 'text-base text-indigo-900'}">
-              <i class="fa-solid fa-user text-[11px] text-indigo-500"></i>
-              ${n}
+        <div class="flex flex-wrap gap-1.5">
+          ${names.map(name => `
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <i class="fa-solid fa-user mr-1 text-[10px] text-emerald-600"></i>
+              ${escapeHtml(name)}
             </span>
           `).join('')}
         </div>
       `;
     }
 
-    function getProcessedData() {
-      const keyword = document.getElementById('globalSearchInput').value.trim().toLowerCase();
-      let list = [...participants];
-
-      // 住宿安排分頁：排除「彭偉峰」
-      if (currentTab === 'lodging') {
-        list = list.filter(item => item.name !== '彭偉峰');
+    /* =========================================================
+       7. 表頭篩選與排序核心邏輯
+       ========================================================= */
+    function renderHeaderTh(colTitle, colKey, widthClass) {
+      const hasFilter = columnFilters[colKey] && columnFilters[colKey].size > 0;
+      const isSorted = activeSortColumn === colKey;
+      let sortIcon = 'fa-solid fa-arrow-down-up-across-line text-slate-300';
+      if (isSorted) {
+        sortIcon = activeSortDirection === 'asc' 
+          ? 'fa-solid fa-arrow-up-short-wide text-emerald-600' 
+          : 'fa-solid fa-arrow-down-wide-short text-emerald-600';
       }
 
-      // 餐飲安排分頁：移除用餐餐廳為「NO」的資料
-      if (currentTab === 'dining') {
+      return `
+        <th class="py-3 px-3 font-semibold ${widthClass}">
+          <div class="flex items-center justify-between group">
+            <span>${colTitle}</span>
+            <button onclick="openFilterModal('${colKey}', '${colTitle}', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+              <i class="${sortIcon} ${hasFilter ? 'text-emerald-600' : ''}"></i>
+            </button>
+          </div>
+        </th>
+      `;
+    }
+
+    function getProcessedDirectoryList() {
+      let list = [...rawDirectoryData];
+
+      // 全域即時模糊檢索
+      if (searchQuery) {
         list = list.filter(item => {
-          const rest = (item.restaurant || '').trim();
-          return rest && rest.toUpperCase() !== 'NO' && rest !== '無';
+          const rowText = `${item.team} ${item.name} ${item.trafficOut} ${item.trafficBack} ${item.restaurant} ${item.diet} ${item.hotel} ${item.roomType} ${item.roommates}`.toLowerCase();
+          return rowText.includes(searchQuery);
         });
       }
 
-      // 1. 全文即時檢索過濾
-      if (keyword) {
-        list = list.filter(item => {
-          const combined = [
-            item.name,
-            item.team,
-            item.transportOut,
-            item.transportIn,
-            `${item.transportOut}/${item.transportIn}`,
-            item.restaurant,
-            item.dietary,
-            item.hotel,
-            item.roomType,
-            `${item.hotel}-${item.roomType}`,
-            item.roommates
-          ].join(' ').toLowerCase();
-          return combined.includes(keyword);
-        });
-      }
-
-      // 2. 表頭特定值過濾 (Column Filters)
-      const filterKeys = Object.keys(columnFilters);
-      if (filterKeys.length > 0) {
-        list = list.filter(item => {
-          return filterKeys.every(colKey => {
-            const selectedSet = columnFilters[colKey];
-            if (!selectedSet || selectedSet.size === 0) return true;
+      // 欄位過濾
+      Object.keys(columnFilters).forEach(colKey => {
+        const allowedSet = columnFilters[colKey];
+        if (allowedSet && allowedSet.size > 0) {
+          list = list.filter(item => {
             const val = getColumnValue(item, colKey);
-            return selectedSet.has(val);
+            return allowedSet.has(val);
           });
-        });
-      }
+        }
+      });
 
-      // 3. 排序邏輯
-      if (activeSort) {
-        const { columnKey, direction } = activeSort;
-        const multiplier = direction === 'asc' ? 1 : -1;
+      // 專屬預設與動態排序
+      const strokeSort = (a, b) => (a || '').localeCompare(b || '', 'zh-Hant-TW', { collation: 'stroke' });
+
+      if (activeSortColumn && activeSortDirection) {
         list.sort((a, b) => {
-          const valA = getColumnValue(a, columnKey);
-          const valB = getColumnValue(b, columnKey);
-          return multiplier * strokeCollator.compare(valA, valB);
+          const valA = getColumnValue(a, activeSortColumn);
+          const valB = getColumnValue(b, activeSortColumn);
+          const res = strokeSort(valA, valB);
+          return activeSortDirection === 'asc' ? res : -res;
         });
       } else {
+        // 各分頁預設排序規則
         if (currentTab === 'overview') {
-          // 總表排序：1. 隊別 (白-紅-綠-接班人) -> 2. 用餐餐廳 -> 3. 住宿飯店-房型 -> 4. 室友
+          // 隊別 (白-紅-綠-接班人) ➔ 餐廳 ➔ 飯店房型 ➔ 室友
+          const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
           list.sort((a, b) => {
-            const pA = getTeamPriority(a.team);
-            const pB = getTeamPriority(b.team);
-            if (pA !== pB) return pA - pB;
-
-            const cTeam = strokeCollator.compare(a.team || '', b.team || '');
-            if (cTeam !== 0) return cTeam;
-
-            const cRest = strokeCollator.compare(a.restaurant || '', b.restaurant || '');
-            if (cRest !== 0) return cRest;
-
-            const hrA = `${a.hotel || ''}-${a.roomType || ''}`;
-            const hrB = `${b.hotel || ''}-${b.roomType || ''}`;
-            const cHotelRoom = strokeCollator.compare(hrA, hrB);
-            if (cHotelRoom !== 0) return cHotelRoom;
-
-            return strokeCollator.compare(a.roommates || '', b.roommates || '');
+            const tA = teamOrder[a.team] || 99;
+            const tB = teamOrder[b.team] || 99;
+            if (tA !== tB) return tA - tB;
+            if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
+            const comboA = `${a.hotel}-${a.roomType}`;
+            const comboB = `${b.hotel}-${b.roomType}`;
+            if (comboA !== comboB) return strokeSort(comboA, comboB);
+            return strokeSort(a.name, b.name);
           });
-        } 
-        else if (currentTab === 'transport') {
-          // 交通安排排序：
-          // 1. 「隊長」置於最上方
-          // 2. 其餘：交通去程 (遊覽車-開車-自處) -> 交通回程 (遊覽車-開車-自處) -> 姓名 (筆畫)
+        } else if (currentTab === 'traffic') {
+          // 隊長在最上方 ➔ 去程 ➔ 回程 ➔ 姓名
           list.sort((a, b) => {
-            const aIsLeader = isLeader(a.leaderTransportOut) || isLeader(a.leaderTransportIn);
-            const bIsLeader = isLeader(b.leaderTransportOut) || isLeader(b.leaderTransportIn);
-            if (aIsLeader && !bIsLeader) return -1;
-            if (!aIsLeader && bIsLeader) return 1;
-
-            const priOutA = getTransportPriority(a.transportOut);
-            const priOutB = getTransportPriority(b.transportOut);
-            if (priOutA !== priOutB) return priOutA - priOutB;
-
-            const cOut = strokeCollator.compare(a.transportOut || '', b.transportOut || '');
-            if (cOut !== 0) return cOut;
-
-            const priInA = getTransportPriority(a.transportIn);
-            const priInB = getTransportPriority(b.transportIn);
-            if (priInA !== priInB) return priInA - priInB;
-
-            const cIn = strokeCollator.compare(a.transportIn || '', b.transportIn || '');
-            if (cIn !== 0) return cIn;
-
-            return strokeCollator.compare(a.name || '', b.name || '');
+            if (a.isTrafficLeader === '是' && b.isTrafficLeader !== '是') return -1;
+            if (a.isTrafficLeader !== '是' && b.isTrafficLeader === '是') return 1;
+            const tRank = { '遊覽車': 1, '開車': 2, '自處': 3, '高鐵': 4 };
+            const outA = tRank[a.trafficOut] || 99;
+            const outB = tRank[b.trafficOut] || 99;
+            if (outA !== outB) return outA - outB;
+            const backA = tRank[a.trafficBack] || 99;
+            const backB = tRank[b.trafficBack] || 99;
+            if (backA !== backB) return backA - backB;
+            return strokeSort(a.name, b.name);
           });
-        } 
-        else if (currentTab === 'dining') {
-          // 餐飲安排排序：
-          // 1. 各餐廳「隊長」置於最上方
-          // 2. 其餘：1.用餐餐廳 -> 2.交通方式 (遊覽車-開車-自處) -> 3.姓名 (筆畫由少到多)
+        } else if (currentTab === 'dining') {
+          // 各餐廳隊長置頂 ➔ 用餐餐廳 ➔ 交通方式 ➔ 姓名筆畫
           list.sort((a, b) => {
-            const cRest = strokeCollator.compare(a.restaurant || '', b.restaurant || '');
-            if (cRest !== 0) return cRest;
-
-            const aIsLdr = isLeader(a.leaderRestaurant) || isLeader(a.leaderTransportOut);
-            const bIsLdr = isLeader(b.leaderRestaurant) || isLeader(b.leaderTransportOut);
-            if (aIsLdr && !bIsLdr) return -1;
-            if (!aIsLdr && bIsLdr) return 1;
-
-            // 交通方式比對 (餐飲自處視為遊覽車)
-            const tA = getColumnValue(a, 'transportOut');
-            const tB = getColumnValue(b, 'transportOut');
-            const priA = getTransportPriority(tA);
-            const priB = getTransportPriority(tB);
-            if (priA !== priB) return priA - priB;
-
-            const cTrans = strokeCollator.compare(tA, tB);
-            if (cTrans !== 0) return cTrans;
-
-            return strokeCollator.compare(a.name || '', b.name || '');
+            if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
+            if (a.isDiningLeader === '是' && b.isDiningLeader !== '是') return -1;
+            if (a.isDiningLeader !== '是' && b.isDiningLeader === '是') return 1;
+            return strokeSort(a.name, b.name);
           });
-        } 
-        else if (currentTab === 'lodging') {
-          // 住宿安排：住宿飯店 - 房型 - 姓名 - 同房室友（字首筆畫數由少到多）
+        } else if (currentTab === 'lodging') {
+          // 飯店 ➔ 房型 ➔ 姓名 ➔ 室友筆畫
           list.sort((a, b) => {
-            const cmpHotel = strokeCollator.compare(a.hotel || '', b.hotel || '');
-            if (cmpHotel !== 0) return cmpHotel;
-
-            const cmpRoom = strokeCollator.compare(a.roomType || '', b.roomType || '');
-            if (cmpRoom !== 0) return cmpRoom;
-
-            const cmpName = strokeCollator.compare(a.name || '', b.name || '');
-            if (cmpName !== 0) return cmpName;
-
-            return strokeCollator.compare(a.roommates || '', b.roommates || '');
+            if (a.hotel !== b.hotel) return strokeSort(a.hotel, b.hotel);
+            if (a.roomType !== b.roomType) return strokeSort(a.roomType, b.roomType);
+            return strokeSort(a.name, b.name);
           });
         }
       }
@@ -845,680 +984,195 @@
       return list;
     }
 
-    // 餐廳圖標與專屬淡色背景分類
-    function getRestaurantMeta(restaurantName) {
-      const name = (restaurantName || '').trim();
-      if (name.includes('麵五三')) {
-        return {
-          rowClass: 'rest-bg-0 hover:brightness-95',
-          icon: 'fa-bowl-food',
-          iconColor: 'text-amber-600'
-        };
-      }
-      if (name.includes('植田')) {
-        return {
-          rowClass: 'rest-bg-1 hover:brightness-95',
-          icon: 'fa-fish-fins',
-          iconColor: 'text-emerald-600'
-        };
-      }
-      if (name.includes('弎食')) {
-        return {
-          rowClass: 'rest-bg-2 hover:brightness-95',
-          icon: 'fa-fire-burner',
-          iconColor: 'text-blue-600'
-        };
-      }
-      if (name.includes('湫禾')) {
-        return {
-          rowClass: 'rest-bg-3 hover:brightness-95',
-          icon: 'fa-hot-tub-person',
-          iconColor: 'text-purple-600'
-        };
-      }
-      return {
-        rowClass: 'rest-bg-other hover:bg-slate-50',
-        icon: 'fa-utensils',
-        iconColor: 'text-slate-600'
-      };
+    function getColumnValue(item, colKey) {
+      if (colKey === 'trafficCombo') return `${item.trafficOut}/${item.trafficBack}`;
+      if (colKey === 'lodgingCombo') return `${item.hotel}-${item.roomType}`;
+      return item[colKey] || '';
     }
 
-    // 住宿飯店專屬圖標與淡色背景
-    function getHotelMeta(hotelName) {
-      const name = (hotelName || '').trim();
-      if (name.includes('正巧')) {
-        return {
-          rowClass: 'hotel-bg-0 hover:brightness-95',
-          icon: 'fa-tree-city',
-          iconColor: 'text-teal-600'
-        };
-      }
-      if (name.includes('知達')) {
-        return {
-          rowClass: 'hotel-bg-1 hover:brightness-95',
-          icon: 'fa-landmark',
-          iconColor: 'text-amber-600'
-        };
-      }
-      return {
-        rowClass: 'hotel-bg-other hover:bg-slate-50',
-        icon: 'fa-hotel',
-        iconColor: 'text-sky-600'
-      };
+    /* --- 彈窗拖曳與篩選控制 --- */
+    function openFilterModal(colKey, colTitle, event) {
+      event.stopPropagation();
+      activeFilterColumn = colKey;
+      document.getElementById('modalColumnTitle').textContent = `${colTitle} 篩選`;
+
+      const modal = document.getElementById('filterDropdownModal');
+      const overlay = document.getElementById('filterModalOverlay');
+
+      // 定位彈窗
+      const rect = event.currentTarget.getBoundingClientRect();
+      const modalW = 288;
+      let leftPos = rect.left - 100;
+      if (leftPos + modalW > window.innerWidth - 10) leftPos = window.innerWidth - modalW - 10;
+      if (leftPos < 10) leftPos = 10;
+      
+      modal.style.top = `${Math.min(rect.bottom + 8, window.innerHeight - 360)}px`;
+      modal.style.left = `${leftPos}px`;
+
+      renderFilterCheckboxes('');
+      document.getElementById('filterValueSearch').value = '';
+
+      overlay.classList.remove('hidden');
+      modal.classList.remove('hidden');
     }
 
-    // 飲食注意事項 Badge：為「無」時以淺灰顯示
-    function renderDietaryBadge(diet) {
-      const val = (diet || '').trim();
-      if (!val || val === '無' || val.includes('無特殊')) {
-        return `<span class="text-slate-400 bg-slate-100/80 px-2 py-0.5 rounded text-xs border border-slate-200/60">無</span>`;
-      }
-      if (val.includes('素')) {
-        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs"><i class="fa-solid fa-leaf text-[10px]"></i>${val}</span>`;
-      }
-      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium bg-rose-100 text-rose-800 border border-rose-300 text-xs"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i>${val}</span>`;
+    function closeFilterModal() {
+      document.getElementById('filterDropdownModal').classList.add('hidden');
+      document.getElementById('filterModalOverlay').classList.add('hidden');
     }
 
-    function renderThWithFilter(colKey, colTitle, widthClass = '') {
-      const isFiltered = columnFilters[colKey] && columnFilters[colKey].size > 0;
-      const isSorted = activeSort && activeSort.columnKey === colKey;
-      let sortIcon = 'fa-sort text-slate-300';
-      if (isSorted) {
-        sortIcon = activeSort.direction === 'asc' ? 'fa-arrow-up-a-z text-brand-600' : 'fa-arrow-down-z-a text-brand-600';
-      }
+    function renderFilterCheckboxes(searchTerm) {
+      if (!activeFilterColumn) return;
+      const listContainer = document.getElementById('filterCheckboxList');
+      
+      const allVals = Array.from(new Set(rawDirectoryData.map(i => getColumnValue(i, activeFilterColumn)))).filter(Boolean);
+      const currentSelected = columnFilters[activeFilterColumn] || new Set(allVals);
 
-      return `
-        <th class="py-2.5 px-3.5 font-bold border-r border-slate-200 text-slate-800 bg-slate-100 ${widthClass}">
-          <div class="flex items-center justify-between gap-1.5">
-            <span>${colTitle}</span>
-            <button 
-              onclick="openColumnFilter(event, '${colKey}', '${colTitle}')" 
-              class="table-filter-btn p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
-              title="篩選或排序「${colTitle}」"
-            >
-              <i class="fa-solid ${sortIcon} text-xs"></i>
-              ${isFiltered ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>' : ''}
-            </button>
-          </div>
-        </th>
-      `;
-    }
+      const filteredVals = allVals.filter(v => !searchTerm || v.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    function render() {
-      const dataList = getProcessedData();
-      const matchCountEl = document.getElementById('matchCount');
-      const noDataAlert = document.getElementById('noDataAlert');
-      const tableHead = document.getElementById('tableHead');
-      const tableBody = document.getElementById('tableBody');
-      const badgeQuery = document.getElementById('activeSearchQueryBadge');
-      const activeFilterBadge = document.getElementById('activeColumnFiltersBadge');
-      const searchVal = document.getElementById('globalSearchInput').value.trim();
-
-      document.getElementById('tabBadge-overview').innerText = participants.length;
-      matchCountEl.innerText = dataList.length;
-
-      // 關鍵字標籤
-      if (searchVal) {
-        badgeQuery.innerText = `搜尋：「${searchVal}」`;
-        badgeQuery.classList.remove('hidden');
-      } else {
-        badgeQuery.classList.add('hidden');
-      }
-
-      // 欄位篩選啟用標籤
-      const hasColFilters = Object.keys(columnFilters).some(k => columnFilters[k] && columnFilters[k].size > 0);
-      if (hasColFilters || activeSort) {
-        activeFilterBadge.classList.remove('hidden');
-      } else {
-        activeFilterBadge.classList.add('hidden');
-      }
-
-      if (dataList.length === 0) {
-        tableHead.innerHTML = '';
-        tableBody.innerHTML = '';
-        noDataAlert.classList.remove('hidden');
-        return;
-      }
-      noDataAlert.classList.add('hidden');
-
-      // --- 1. 總表 ---
-      if (currentTab === 'overview') {
-        tableHead.innerHTML = `
-          <tr class="text-sm">
-            <th class="py-2.5 px-3 w-10 text-center text-slate-400 bg-slate-100">#</th>
-            ${renderThWithFilter('name', '姓名', 'w-36')}
-            ${renderThWithFilter('team', '隊別', 'w-28')}
-            ${renderThWithFilter('transCombo', '交通-去/回', 'w-44')}
-            ${renderThWithFilter('restaurant', '用餐餐廳', 'w-36')}
-            ${renderThWithFilter('hotelRoomCombo', '住宿飯店-房型', 'w-48')}
-            ${renderThWithFilter('roommates', '室友')}
-          </tr>
-        `;
-
-        tableBody.innerHTML = dataList.map((item, idx) => {
-          const transCombo = `${item.transportOut || '自處'}/${item.transportIn || '自處'}`;
-          const hotelRoomCombo = `${item.hotel || '無'}-${item.roomType || '無'}`;
-          const teamBgClass = getTeamBgClass(item.team);
-
-          return `
-            <tr class="${teamBgClass} transition border-b border-slate-200/70 text-sm">
-              <td class="py-2.5 px-3 text-center text-slate-400 font-mono text-xs">${idx + 1}</td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-bold text-slate-900">${item.name}</td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-semibold text-slate-700">${item.team}</td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-medium text-slate-800">
-                <span class="inline-flex items-center gap-1.5 bg-white/90 px-2 py-0.5 rounded border border-slate-200">
-                  <i class="fa-solid fa-arrows-left-right text-indigo-500 text-xs"></i>
-                  ${transCombo}
-                </span>
-              </td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-medium text-slate-800">${item.restaurant}</td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-medium text-slate-800">
-                <span class="inline-flex items-center gap-1 bg-sky-50 text-sky-950 px-2.5 py-0.5 rounded border border-sky-200 font-semibold">
-                  <i class="fa-solid fa-hotel text-sky-600 text-xs"></i>
-                  ${hotelRoomCombo}
-                </span>
-              </td>
-              <td class="py-2.5 px-3.5 bg-indigo-50/15">
-                ${renderRoommateChips(item.roommates, true)}
-              </td>
-            </tr>
-          `;
-        }).join('');
-      } 
-      // --- 2. 交通安排 ---
-      else if (currentTab === 'transport') {
-        tableHead.innerHTML = `
-          <tr class="text-sm">
-            <th class="py-2.5 px-3 w-10 text-center text-slate-400 bg-slate-100">#</th>
-            ${renderThWithFilter('name', '姓名', 'w-64')}
-            ${renderThWithFilter('transportOut', '交通-去程', 'w-60')}
-            ${renderThWithFilter('transportIn', '交通-回程')}
-          </tr>
-        `;
-
-        tableBody.innerHTML = dataList.map((item, idx) => {
-          const outLeader = isLeader(item.leaderTransportOut);
-          const inLeader = isLeader(item.leaderTransportIn);
-          let leaderNote = '';
-          if (outLeader && inLeader) leaderNote = '（去/回遊覽車 隊長）';
-          else if (outLeader) leaderNote = '（去程遊覽車 隊長）';
-          else if (inLeader) leaderNote = '（回程遊覽車 隊長）';
-
-          const transInBgClass = getTransportInboundMeta(item.transportIn);
-
-          return `
-            <tr class="${transInBgClass} transition border-b border-slate-200/60 text-sm">
-              <td class="py-2.5 px-3 text-center text-slate-400 font-mono text-xs">${idx + 1}</td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-bold text-slate-900">
-                <span>${item.name}</span>
-                ${leaderNote ? `<span class="ml-1.5 text-xs text-rose-600 font-bold">${leaderNote}</span>` : ''}
-              </td>
-              <td class="py-2.5 px-3.5 border-r border-slate-200/60 font-medium text-slate-800">
-                <span class="inline-flex items-center gap-1.5 bg-white/90 px-2.5 py-0.5 rounded border border-slate-200">
-                  <i class="fa-solid fa-van-shuttle text-indigo-500 text-xs"></i>
-                  ${item.transportOut}
-                </span>
-              </td>
-              <td class="py-2.5 px-3.5 font-medium text-slate-800">
-                <span class="inline-flex items-center gap-1.5 bg-white/90 px-2.5 py-0.5 rounded border border-slate-200">
-                  <i class="fa-solid fa-arrow-rotate-left text-indigo-500 text-xs"></i>
-                  ${item.transportIn}
-                </span>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-      // --- 3. 餐飲安排 ---
-      else if (currentTab === 'dining') {
-        tableHead.innerHTML = `
-          <tr class="text-sm">
-            ${renderThWithFilter('restaurant', '用餐餐廳', 'w-48')}
-            ${renderThWithFilter('name', '姓名', 'w-56')}
-            ${renderThWithFilter('dietary', '飲食注意事項', 'w-60')}
-            ${renderThWithFilter('transportOut', '交通方式')}
-          </tr>
-        `;
-
-        tableBody.innerHTML = dataList.map((item) => {
-          const isLdr = isLeader(item.leaderRestaurant) || isLeader(item.leaderTransportOut);
-          const leaderNote = isLdr ? '（遊覽車 隊長）' : '';
-          const meta = getRestaurantMeta(item.restaurant);
-
-          // 餐飲安排中的交通方式：將「自處」改為「遊覽車」
-          let diningTransport = (item.transportOut || '遊覽車').trim();
-          if (diningTransport === '自處') {
-            diningTransport = '遊覽車';
-          }
-
-          return `
-            <tr class="${meta.rowClass} transition border-b border-slate-200/70 text-sm">
-              <td class="py-2.5 px-4 border-r border-slate-200/60 font-bold text-slate-900">
-                <span class="inline-flex items-center gap-2">
-                  <i class="fa-solid ${meta.icon} text-sm ${meta.iconColor}"></i>
-                  ${item.restaurant}
-                </span>
-              </td>
-              <td class="py-2.5 px-4 border-r border-slate-200/60 font-bold text-slate-900">
-                <span>${item.name}</span>
-                ${leaderNote ? `<span class="ml-1.5 text-xs text-rose-600 font-bold">${leaderNote}</span>` : ''}
-              </td>
-              <td class="py-2.5 px-4 border-r border-slate-200/60">
-                ${renderDietaryBadge(item.dietary)}
-              </td>
-              <td class="py-2.5 px-4 font-medium text-slate-800">
-                <span class="inline-flex items-center gap-1.5 bg-white/90 px-2.5 py-0.5 rounded border border-slate-200 text-xs">
-                  <i class="fa-solid fa-car text-[10px] text-slate-500"></i>
-                  ${diningTransport}
-                </span>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-      // --- 4. 住宿安排 ---
-      else if (currentTab === 'lodging') {
-        tableHead.innerHTML = `
-          <tr class="text-sm">
-            <th class="py-3 px-3 w-10 text-center text-slate-400 bg-slate-100">#</th>
-            ${renderThWithFilter('hotel', '住宿飯店', 'w-48')}
-            ${renderThWithFilter('roomType', '房型', 'w-36')}
-            ${renderThWithFilter('name', '姓名', 'w-44')}
-            ${renderThWithFilter('roommates', '同房室友')}
-          </tr>
-        `;
-
-        tableBody.innerHTML = dataList.map((item, idx) => {
-          const hotelMeta = getHotelMeta(item.hotel);
-          const comboBgClass = getLodgingComboBgClass(item.hotel, item.roomType);
-
-          return `
-            <tr class="${comboBgClass} transition border-b border-slate-200/60 text-sm">
-              <td class="py-2.5 px-3 text-center text-xs text-slate-400 font-mono">${idx + 1}</td>
-              <td class="py-2.5 px-4 border-r border-slate-200/60 font-bold text-slate-900">
-                <span class="inline-flex items-center gap-2">
-                  <i class="fa-solid ${hotelMeta.icon} ${hotelMeta.iconColor} text-sm"></i>
-                  <span>${item.hotel}</span>
-                </span>
-              </td>
-              <td class="py-2.5 px-4 border-r border-slate-200/60">
-                <span class="bg-white/80 text-slate-800 px-2 py-0.5 rounded text-xs border border-slate-200 font-medium">${item.roomType}</span>
-              </td>
-              <td class="py-2.5 px-4 border-r border-slate-200/60 font-bold text-slate-900">
-                ${item.name}
-              </td>
-              <td class="py-2.5 px-4 bg-indigo-50/20 font-medium text-indigo-950">
-                ${renderRoommateChips(item.roommates, false)}
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-
-    window.openColumnFilter = function(e, colKey, colTitle) {
-      e.stopPropagation();
-      const popover = document.getElementById('columnFilterPopover');
-      const backdrop = document.getElementById('filterBackdrop');
-      const rect = e.currentTarget.getBoundingClientRect();
-
-      backdrop.classList.remove('hidden');
-      popover.classList.remove('hidden');
-
-      // 重置拖曳位移
-      popover.style.transform = '';
-
-      if (window.innerWidth <= 640) {
-        // 手機版：置中顯示
-        popover.style.left = '50%';
-        popover.style.top = '50%';
-        popover.style.transform = 'translate(-50%, -50%)';
-      } else {
-        // 桌機版：邊界智慧判定
-        const popoverWidth = 320;
-        const popoverHeight = 360;
-
-        let left = rect.left;
-        let top = rect.bottom + 8;
-
-        if (left + popoverWidth > window.innerWidth - 16) {
-          left = window.innerWidth - popoverWidth - 16;
-        }
-        if (left < 16) left = 16;
-
-        if (top + popoverHeight > window.innerHeight - 16) {
-          top = Math.max(16, rect.top - popoverHeight - 8);
-        }
-
-        popover.style.left = `${left}px`;
-        popover.style.top = `${top}px`;
-      }
-
-      // 收集該欄位所有不重複選項
-      let allItems = participants.filter(it => currentTab !== 'lodging' || it.name !== '彭偉峰');
-      if (currentTab === 'dining') {
-        allItems = allItems.filter(it => (it.restaurant || '').trim().toUpperCase() !== 'NO');
-      }
-
-      const uniqueVals = Array.from(new Set(allItems.map(it => getColumnValue(it, colKey)))).filter(Boolean);
-      uniqueVals.sort((a, b) => strokeCollator.compare(a, b));
-
-      const activeSet = columnFilters[colKey] ? new Set(columnFilters[colKey]) : new Set(uniqueVals);
-
-      currentFilterContext = {
-        columnKey: colKey,
-        title: colTitle,
-        allValues: uniqueVals,
-        selectedValues: activeSet
-      };
-
-      document.getElementById('filterColTitle').innerText = `${colTitle} 篩選`;
-      document.getElementById('filterSearchInput').value = '';
-      renderFilterOptions();
-    };
-
-    (function initDraggableFilterModal() {
-      const popover = document.getElementById('columnFilterPopover');
-      const handle = document.getElementById('filterDragHandle');
-      let isDragging = false;
-      let startX = 0, startY = 0;
-      let initialLeft = 0, initialTop = 0;
-
-      function onStart(e) {
-        if (e.target.closest('button')) return;
-        isDragging = true;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        const rect = popover.getBoundingClientRect();
-        popover.style.transform = 'none';
-        popover.style.left = `${rect.left}px`;
-        popover.style.top = `${rect.top}px`;
-
-        startX = clientX;
-        startY = clientY;
-        initialLeft = rect.left;
-        initialTop = rect.top;
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onEnd);
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', onEnd);
-      }
-
-      function onMove(e) {
-        if (!isDragging) return;
-        if (e.cancelable) e.preventDefault();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        const deltaX = clientX - startX;
-        const deltaY = clientY - startY;
-
-        let newLeft = initialLeft + deltaX;
-        let newTop = initialTop + deltaY;
-
-        const maxLeft = window.innerWidth - popover.offsetWidth - 10;
-        const maxTop = window.innerHeight - popover.offsetHeight - 10;
-        newLeft = Math.max(10, Math.min(newLeft, maxLeft));
-        newTop = Math.max(10, Math.min(newTop, maxTop));
-
-        popover.style.left = `${newLeft}px`;
-        popover.style.top = `${newTop}px`;
-      }
-
-      function onEnd() {
-        isDragging = false;
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onEnd);
-        document.removeEventListener('touchmove', onMove);
-        document.removeEventListener('touchend', onEnd);
-      }
-
-      handle.addEventListener('mousedown', onStart);
-      handle.addEventListener('touchstart', onStart, { passive: true });
-    })();
-
-    function renderFilterOptions() {
-      const listEl = document.getElementById('filterOptionsList');
-      const filterKeyword = document.getElementById('filterSearchInput').value.trim().toLowerCase();
-
-      const filtered = currentFilterContext.allValues.filter(val => {
-        return !filterKeyword || String(val).toLowerCase().includes(filterKeyword);
-      });
-
-      listEl.innerHTML = filtered.map(val => {
-        const checked = currentFilterContext.selectedValues.has(val) ? 'checked' : '';
+      listContainer.innerHTML = filteredVals.map(val => {
+        const isChecked = currentSelected.has(val);
         return `
-          <label class="flex items-center gap-2 py-1 px-1 rounded hover:bg-slate-50 cursor-pointer text-slate-700">
-            <input type="checkbox" value="${encodeURIComponent(val)}" class="filter-chk rounded text-brand-600 focus:ring-brand-500" ${checked}>
-            <span class="truncate">${val}</span>
+          <label class="flex items-center space-x-2 py-1 px-1 rounded hover:bg-slate-100 cursor-pointer">
+            <input type="checkbox" value="${escapeHtml(val)}" class="filter-chk accent-emerald-600 rounded" ${isChecked ? 'checked' : ''}>
+            <span class="truncate">${escapeHtml(val)}</span>
           </label>
         `;
       }).join('');
+    }
 
-      listEl.querySelectorAll('.filter-chk').forEach(chk => {
-        chk.addEventListener('change', (ev) => {
-          const val = decodeURIComponent(ev.target.value);
-          if (ev.target.checked) currentFilterContext.selectedValues.add(val);
-          else currentFilterContext.selectedValues.delete(val);
+    function toggleSelectAllFilter() {
+      const chks = document.querySelectorAll('.filter-chk');
+      const allChecked = Array.from(chks).every(c => c.checked);
+      chks.forEach(c => c.checked = !allChecked);
+    }
+
+    function confirmColumnFilter() {
+      if (!activeFilterColumn) return;
+      const chks = document.querySelectorAll('.filter-chk');
+      const selected = new Set();
+      chks.forEach(c => {
+        if (c.checked) selected.add(c.value);
+      });
+
+      columnFilters[activeFilterColumn] = selected;
+      closeFilterModal();
+      renderCurrentTab();
+    }
+
+    function applySort(direction) {
+      activeSortColumn = activeFilterColumn;
+      activeSortDirection = direction;
+      closeFilterModal();
+      renderCurrentTab();
+    }
+
+    /* =========================================================
+       8. 活動流程安全編輯控制 (密碼：1223)
+       ========================================================= */
+    function handleScheduleEditToggle() {
+      if (!isScheduleEditing) {
+        requestPasswordAuth(() => {
+          isScheduleEditing = true;
+          document.getElementById('editBtnText').textContent = '完成並鎖定';
+          document.getElementById('addScheduleRowBtn').classList.remove('hidden');
+          renderCurrentTab();
         });
-      });
+      } else {
+        isScheduleEditing = false;
+        document.getElementById('editBtnText').textContent = '編輯流程';
+        document.getElementById('addScheduleRowBtn').classList.add('hidden');
+        renderCurrentTab();
+      }
     }
 
-    document.getElementById('filterSearchInput').addEventListener('input', renderFilterOptions);
-
-    document.getElementById('btnSelectAllValues').addEventListener('click', () => {
-      currentFilterContext.allValues.forEach(v => currentFilterContext.selectedValues.add(v));
-      renderFilterOptions();
-    });
-
-    document.getElementById('btnClearAllValues').addEventListener('click', () => {
-      currentFilterContext.selectedValues.clear();
-      renderFilterOptions();
-    });
-
-    document.getElementById('btnSortAsc').addEventListener('click', () => {
-      activeSort = { columnKey: currentFilterContext.columnKey, direction: 'asc' };
-      closeColumnFilter();
-      render();
-    });
-
-    document.getElementById('btnSortDesc').addEventListener('click', () => {
-      activeSort = { columnKey: currentFilterContext.columnKey, direction: 'desc' };
-      closeColumnFilter();
-      render();
-    });
-
-    document.getElementById('btnSortReset').addEventListener('click', () => {
-      if (activeSort && activeSort.columnKey === currentFilterContext.columnKey) {
-        activeSort = null;
+    function updateScheduleCell(id, field, value) {
+      const target = scheduleData.find(item => item.id === id);
+      if (target) {
+        target[field] = value;
       }
-      closeColumnFilter();
-      render();
-    });
+    }
 
-    window.closeColumnFilter = function() {
-      document.getElementById('columnFilterPopover').classList.add('hidden');
-      document.getElementById('filterBackdrop').classList.add('hidden');
-    };
+    function addScheduleRow() {
+      const nextId = scheduleData.length > 0 ? Math.max(...scheduleData.map(i => i.id)) + 1 : 1;
+      scheduleData.push({
+        id: nextId,
+        date: "10/31",
+        startTime: "12:00",
+        endTime: "13:00",
+        duration: "60分",
+        location: "新地點",
+        activity: "新活動項目",
+        note: "- 項目說明\n-- 備註事項"
+      });
+      renderCurrentTab();
+    }
 
-    window.applyColumnFilter = function() {
-      const colKey = currentFilterContext.columnKey;
-      if (currentFilterContext.selectedValues.size === currentFilterContext.allValues.length) {
-        delete columnFilters[colKey];
-      } else {
-        columnFilters[colKey] = new Set(currentFilterContext.selectedValues);
+    function deleteScheduleRow(id) {
+      if (confirm('確定要刪除此筆流程項目嗎？')) {
+        scheduleData = scheduleData.filter(i => i.id !== id);
+        renderCurrentTab();
       }
-      closeColumnFilter();
-      render();
-    };
+    }
 
-    window.resetColumnFilters = function() {
-      for (const k in columnFilters) delete columnFilters[k];
-      activeSort = null;
-      render();
-    };
+    /* =========================================================
+       9. 密碼驗證模組與 PDF 匯出 (密碼：1223)
+       ========================================================= */
+    function requestPasswordAuth(onSuccess) {
+      pendingPasswordCallback = onSuccess;
+      const modal = document.getElementById('passwordModal');
+      const input = document.getElementById('passwordInput');
+      input.value = '';
+      modal.classList.remove('hidden');
+      input.focus();
 
-    document.addEventListener('click', (ev) => {
-      const popover = document.getElementById('columnFilterPopover');
-      if (!popover.classList.contains('hidden') && !popover.contains(ev.target) && !ev.target.closest('.table-filter-btn')) {
-        closeColumnFilter();
-      }
-    });
-
-    window.switchTab = function(tabName) {
-      currentTab = tabName;
-      for (const k in columnFilters) delete columnFilters[k];
-      activeSort = null;
-
-      ['overview', 'transport', 'dining', 'lodging'].forEach(name => {
-        const btn = document.getElementById(`tabBtn-${name}`);
-        if (name === tabName) {
-          btn.className = "tab-btn px-4 py-2.5 text-sm font-bold border-b-2 border-brand-600 text-brand-600 flex items-center gap-2 whitespace-nowrap transition";
+      document.getElementById('passwordConfirmBtn').onclick = () => {
+        if (input.value === '1223') {
+          closePasswordModal();
+          if (pendingPasswordCallback) pendingPasswordCallback();
         } else {
-          btn.className = "tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 whitespace-nowrap transition";
+          alert('密碼錯誤！請重新輸入。');
+          input.value = '';
+          input.focus();
         }
-      });
-
-      const searchInput = document.getElementById('globalSearchInput');
-      if (tabName === 'overview') {
-        searchInput.placeholder = "搜尋總表的「全文檢索」：請輸入姓名、隊別、交通、餐廳、飯店或室友...";
-      } else if (tabName === 'transport') {
-        searchInput.placeholder = "搜尋交通安排的「全文檢索」：請輸入姓名、去程或回程交通車次...";
-      } else if (tabName === 'dining') {
-        searchInput.placeholder = "搜尋餐飲安排的「全文檢索」：請輸入用餐餐廳、姓名、飲食偏好...";
-      } else if (tabName === 'lodging') {
-        searchInput.placeholder = "搜尋住宿安排的「全文檢索」：請輸入住宿飯店、房型、姓名、室友...";
-      }
-
-      render();
-    };
-
-    const searchInput = document.getElementById('globalSearchInput');
-    const clearBtn = document.getElementById('clearSearchBtn');
-
-    searchInput.addEventListener('input', () => {
-      clearBtn.classList.toggle('hidden', !searchInput.value);
-      render();
-    });
-
-    clearBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      clearBtn.classList.add('hidden');
-      render();
-    });
-
-    // 重新整理時永遠向該固定 Google Sheet 讀取最新內容
-    document.getElementById('refreshDataBtn').addEventListener('click', () => {
-      updateTimestampDisplay();
-      loadDataFromGoogleSheet();
-    });
-
-    const passwordModal = document.getElementById('passwordModal');
-    const exportPasswordInput = document.getElementById('exportPasswordInput');
-    const passwordErrorMsg = document.getElementById('passwordErrorMsg');
-
-    document.getElementById('exportPdfBtn').addEventListener('click', () => {
-      exportPasswordInput.value = '';
-      passwordErrorMsg.classList.add('hidden');
-      passwordModal.classList.remove('hidden');
-      exportPasswordInput.focus();
-    });
-
-    document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
-      passwordModal.classList.add('hidden');
-    });
-
-    document.getElementById('submitPasswordBtn').addEventListener('click', handlePasswordVerification);
-    exportPasswordInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handlePasswordVerification();
-    });
-
-    function handlePasswordVerification() {
-      const pwd = exportPasswordInput.value.trim();
-      if (pwd === '1223') {
-        passwordModal.classList.add('hidden');
-        executePdfExport();
-      } else {
-        passwordErrorMsg.classList.remove('hidden');
-        exportPasswordInput.select();
-      }
+      };
     }
 
-    function executePdfExport() {
-      const exportElement = document.getElementById('pdfExportContainer');
-      const pdfHeader = document.getElementById('pdfHeaderBanner');
-      const docTitle = document.getElementById('pdfDocumentTitle');
-      const dateEl = document.getElementById('pdfExportDate');
+    function closePasswordModal() {
+      document.getElementById('passwordModal').classList.add('hidden');
+      pendingPasswordCallback = null;
+    }
 
-      const tabTitleMap = {
-        overview: '活動行程名冊 - 總表',
-        transport: '活動行程名冊 - 交通安排',
-        dining: '活動行程名冊 - 餐飲安排',
-        lodging: '活動行程名冊 - 住宿安排'
-      };
+    function promptExportPDF() {
+      requestPasswordAuth(() => {
+        executePDFExport();
+      });
+    }
 
-      const title = tabTitleMap[currentTab] || '活動名冊';
-      docTitle.innerText = title;
-      dateEl.innerText = new Date().toLocaleDateString('zh-TW');
-
-      pdfHeader.classList.remove('hidden');
-
-      // 啟用專屬 PDF 渲染防斷裂與防錯位模式
-      exportElement.classList.add('pdf-render-mode');
-
-      // html2pdf 設定：移除會破壞 table 結構的 avoid-all，改用標準 CSS 規則
+    function executePDFExport() {
+      const element = document.getElementById('printableContent');
       const opt = {
-        margin: [8, 6, 8, 6],
-        filename: `${title}_${new Date().toISOString().slice(0, 10)}.pdf`,
+        margin: [8, 8, 8, 8],
+        filename: `重啟人生-翻轉實驗室_${currentTab}_${document.getElementById('updateTimestamp').textContent}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true, 
-          logging: false,
-          scrollY: 0,
-          windowWidth: 1200 // 固定渲染寬度避免手機/窄螢幕匯出時擠壓跑版
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: currentTab === 'overview' ? 'landscape' : 'portrait' 
-        },
-        pagebreak: { 
-          mode: ['css', 'legacy'], // 採用標準 CSS 斷頁規則，不強塞空白 spacer
-          avoid: 'tr' 
-        }
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }
       };
 
-      const btn = document.getElementById('exportPdfBtn');
-      const originHtml = btn.innerHTML;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 匯出中...`;
-      btn.disabled = true;
-
-      html2pdf().set(opt).from(exportElement).save().then(() => {
-        pdfHeader.classList.add('hidden');
-        exportElement.classList.remove('pdf-render-mode');
-        btn.innerHTML = originHtml;
-        btn.disabled = false;
-      }).catch(err => {
-        console.error("PDF 產生失敗：", err);
-        pdfHeader.classList.add('hidden');
-        exportElement.classList.remove('pdf-render-mode');
-        btn.innerHTML = originHtml;
-        btn.disabled = false;
-        window.print();
-      });
+      html2pdf().set(opt).from(element).save();
     }
 
-    // 系統初始化啟動
-    window.addEventListener('DOMContentLoaded', () => {
-      updateTimestampDisplay();
-      participants = calculateRoommates([...DEFAULT_SHEET_DATA]);
-      render();
-      // 初始化時立即自動連線您指定的 Google 試算表
-      loadDataFromGoogleSheet();
-    });
+    /* 輔助函式 */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
   </script>
 </body>
 </html>

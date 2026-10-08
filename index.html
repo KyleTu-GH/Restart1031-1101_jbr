@@ -30,31 +30,31 @@
       position: relative;
     }
 
-    /* 關鍵修復：表頭固定並強制實心背景色，防止下方滾動內文穿透重疊 */
+    /* 表頭固定且實心背景，徹底解決向下滾動時文字重疊穿透問題 */
     .sticky-header th {
       position: sticky !important;
       top: 0 !important;
       z-index: 25 !important;
-      background-color: #f1f5f9 !important; /* 實心淺灰底，絕不透明 */
+      background-color: #f1f5f9 !important;
       box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
     
-    /* 總表 隊別專屬底色 */
+    /* 總表隊別底色 */
     .bg-team-white { background-color: #f1f5f9; }
     .bg-team-red { background-color: #ffe4e6; }
     .bg-team-green { background-color: #ecfdf5; }
     .bg-team-successor { background-color: #fef9c3; }
 
-    /* 活動流程 階層縮排樣式 */
+    /* 活動流程階層項目符號樣式 */
     .bullet-level-1 {
       position: relative;
-      padding-left: 1rem;
+      padding-left: 1.1rem;
       margin-bottom: 0.25rem;
     }
     .bullet-level-1::before {
       content: "•";
       position: absolute;
-      left: 0.15rem;
+      left: 0.2rem;
       top: -0.05rem;
       font-weight: bold;
       color: #64748b;
@@ -62,13 +62,13 @@
 
     .bullet-level-2 {
       position: relative;
-      padding-left: 1.75rem;
+      padding-left: 1.85rem;
       margin-bottom: 0.25rem;
     }
     .bullet-level-2::before {
       content: "◦";
       position: absolute;
-      left: 0.85rem;
+      left: 0.95rem;
       top: -0.05rem;
       font-weight: bold;
       color: #94a3b8;
@@ -76,31 +76,31 @@
 
     .bullet-level-3 {
       position: relative;
-      padding-left: 2.5rem;
+      padding-left: 2.6rem;
       margin-bottom: 0.25rem;
     }
     .bullet-level-3::before {
       content: "▪";
       position: absolute;
-      left: 1.65rem;
+      left: 1.75rem;
       top: 0rem;
       font-size: 0.75rem;
       color: #cbd5e1;
     }
 
-    /* 需行政支援 紫色標記卡片 */
+    /* 需行政支援醒目卡片 */
     .admin-support-item {
       background: linear-gradient(90deg, #f5f3ff 0%, #faf5ff 100%);
       border-left: 3px solid #8b5cf6;
       border-radius: 4px;
       padding: 3px 8px;
-      margin-top: 2px;
-      margin-bottom: 2px;
+      margin-top: 3px;
+      margin-bottom: 3px;
       color: #5b21b6;
       font-weight: 500;
     }
 
-    /* 拖曳彈窗 */
+    /* 篩選彈窗 */
     #filterDropdownModal {
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
     }
@@ -116,141 +116,4 @@
           <i class="fa-solid fa-compass text-lg"></i>
         </div>
         <div class="flex items-baseline space-x-2.5">
-          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">重啟人生-翻轉實驗室 10/31-11/01</h1>
-          <span id="updateTimestamp" class="text-[10px] text-slate-400 font-mono tracking-tight select-none"></span>
-        </div>
-      </div>
-      
-      <div class="flex items-center space-x-2">
-        <button id="refreshBtn" onclick="manualRefreshData()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
-          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
-          <span>重新整理</span>
-        </button>
-        <button onclick="promptExportPDF()" class="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
-          <i class="fa-solid fa-file-pdf text-rose-400"></i>
-          <span>匯出 (限工作人員使用)</span>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- 主要操作區 -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full flex flex-col">
-    
-    <!-- 分頁導航列 -->
-    <div class="flex border-b border-slate-200 overflow-x-auto space-x-2 pb-px no-print select-none">
-      <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-white bg-emerald-600 shadow-sm border-t-2 border-emerald-600">
-        <i class="fa-solid fa-clock-rotate-left"></i>
-        <span>活動流程</span>
-      </button>
-      <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-        <i class="fa-solid fa-table-cells"></i>
-        <span>總表</span>
-      </button>
-      <button onclick="switchTab('traffic')" id="tab-traffic" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-        <i class="fa-solid fa-bus"></i>
-        <span>交通安排</span>
-      </button>
-      <button onclick="switchTab('dining')" id="tab-dining" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-        <i class="fa-solid fa-utensils"></i>
-        <span>餐飲安排</span>
-      </button>
-      <button onclick="switchTab('lodging')" id="tab-lodging" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-        <i class="fa-solid fa-bed"></i>
-        <span>住宿安排</span>
-      </button>
-    </div>
-
-    <!-- 檢索與控制欄 -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
-      <div class="relative flex-1 max-w-lg">
-        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-        <input 
-          type="text" 
-          id="globalSearchInput" 
-          oninput="handleSearchInput(this.value)"
-          placeholder="即時全文檢索（活動流程）..." 
-          class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner"
-        >
-      </div>
-
-      <!-- 右側動作狀態按鈕 -->
-      <div class="flex items-center space-x-3">
-        <div id="scheduleEditControls" class="hidden flex items-center space-x-2">
-          <button id="addScheduleRowBtn" onclick="addScheduleRow()" class="hidden px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 rounded hover:bg-emerald-100 transition-colors">
-            <i class="fa-solid fa-plus mr-1"></i>新增一筆
-          </button>
-          <button id="toggleEditModeBtn" onclick="handleScheduleEditToggle()" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 transition-colors flex items-center space-x-1">
-            <i class="fa-solid fa-pen-to-square text-slate-500"></i>
-            <span id="editBtnText">編輯流程</span>
-          </button>
-        </div>
-
-        <div id="rowCountBadge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-          載入中
-        </div>
-      </div>
-    </div>
-
-    <!-- 主要資料表格區域 -->
-    <div id="printableContent" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-      <div class="table-container flex-1">
-        <table id="mainDataTable" class="w-full text-left border-collapse table-auto">
-          <thead id="tableHead" class="sticky-header border-b border-slate-300 select-none">
-            <!-- 動態注入各分頁表頭 -->
-          </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-200">
-            <!-- 動態注入各分頁內容 -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </main>
-
-  <!-- 表頭篩選彈窗與遮罩 -->
-  <div id="filterModalOverlay" onclick="closeFilterModal()" class="fixed inset-0 bg-slate-900/30 z-40 hidden backdrop-blur-[1px]"></div>
-  <div id="filterDropdownModal" class="fixed z-50 hidden bg-white rounded-xl border border-slate-300 p-4 w-72 max-w-[92vw] shadow-2xl flex flex-col">
-    <div id="filterModalHeader" class="flex items-center justify-between pb-2 border-b border-slate-200 cursor-move select-none">
-      <div class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
-        <i class="fa-solid fa-filter text-emerald-600"></i>
-        <span id="modalColumnTitle">欄位篩選</span>
-      </div>
-      <button onclick="closeFilterModal()" class="text-slate-400 hover:text-slate-600 text-sm p-1">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-
-    <div class="py-2.5 space-y-1.5 border-b border-slate-100 text-xs">
-      <button onclick="applySort('asc')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center space-x-2">
-        <i class="fa-solid fa-arrow-down-a-z text-slate-500"></i>
-        <span>依筆畫 / 順序由少到多 (升冪)</span>
-      </button>
-      <button onclick="applySort('desc')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center space-x-2">
-        <i class="fa-solid fa-arrow-up-z-a text-slate-500"></i>
-        <span>依筆畫 / 順序由多到少 (降冪)</span>
-      </button>
-    </div>
-
-    <div class="pt-2 flex-1 flex flex-col">
-      <div class="text-[11px] font-semibold text-slate-500 mb-1.5 flex justify-between items-center">
-        <span>選取資料項目</span>
-        <button onclick="toggleSelectAllFilter()" id="selectAllToggleBtn" class="text-emerald-600 hover:underline">全選 / 全消</button>
-      </div>
-      <input type="text" id="filterValueSearch" oninput="renderFilterCheckboxes(this.value)" placeholder="搜尋此欄項目..." class="w-full px-2 py-1 text-xs border border-slate-200 rounded mb-2 bg-slate-50 focus:bg-white outline-none">
-      <div id="filterCheckboxList" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1 divide-y divide-slate-50">
-        <!-- 核取方塊 -->
-      </div>
-    </div>
-
-    <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2 mt-2">
-      <button onclick="closeFilterModal()" class="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded border border-slate-200">取消</button>
-      <button onclick="confirmColumnFilter()" class="px-3 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm">確定</button>
-    </div>
-  </div>
-
-  <!-- 密碼輸入通用彈窗 -->
-  <div id="passwordModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5 border border-slate-200">
-      <div class="flex items-center space-x-2 text-slate-900 font-bold text-base mb-2">
-        <i class="fa-solid fa-lock text-emerald-600"></i>
-        <span id="passwordModalTitle">工作人員身
+          <h1 class="text-lg sm:text-xl font

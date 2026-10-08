@@ -192,8 +192,84 @@
       </div>
     </div>
 
+    <!-- 餐飲安排四家餐廳資訊導覽卡片（僅在餐飲安排分頁顯示） -->
+    <div id="diningInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 mb-4 shadow-sm text-xs no-print">
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center">
+        <i class="fa-solid fa-utensils mr-1.5 text-emerald-600"></i>午間餐訪餐廳聯絡資訊
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <!-- 弎食鉄板料理 -->
+        <div class="p-2.5 bg-rose-50/70 border border-rose-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center">
+              <i class="fa-solid fa-fire-burner text-rose-600 mr-1.5"></i>弎食鉄板料理
+            </div>
+            <div class="text-slate-600 mt-1">
+              TEL：<a href="tel:0981930305" class="font-semibold text-rose-800 hover:underline">0981-930305</a>
+            </div>
+          </div>
+          <div class="mt-2 text-right">
+            <a href="https://maps.app.goo.gl/c1w7ijdQV4kwLfw86" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-rose-600 text-white rounded text-[11px] hover:bg-rose-700 transition-colors">
+              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 植田割烹 -->
+        <div class="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center">
+              <i class="fa-solid fa-fish text-emerald-600 mr-1.5"></i>植田割烹
+            </div>
+            <div class="text-slate-600 mt-1">
+              TEL：<a href="tel:0928385269" class="font-semibold text-emerald-800 hover:underline">0928-385269</a>
+            </div>
+          </div>
+          <div class="mt-2 text-right">
+            <a href="https://maps.app.goo.gl/iaRERmMCGPQs8jzFA" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-600 text-white rounded text-[11px] hover:bg-emerald-700 transition-colors">
+              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 湫禾壽喜燒 -->
+        <div class="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center">
+              <i class="fa-solid fa-plate-wheat text-indigo-600 mr-1.5"></i>湫禾壽喜燒
+            </div>
+            <div class="text-slate-600 mt-1">
+              TEL：<a href="tel:0972822535" class="font-semibold text-indigo-800 hover:underline">0972-822535</a>
+            </div>
+          </div>
+          <div class="mt-2 text-right">
+            <a href="https://maps.app.goo.gl/9uTNFLocg2wbAAMn8" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-indigo-600 text-white rounded text-[11px] hover:bg-indigo-700 transition-colors">
+              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 麵五三屋台ラーメン -->
+        <div class="p-2.5 bg-amber-50/70 border border-amber-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center">
+              <i class="fa-solid fa-bowl-food text-amber-600 mr-1.5"></i>麵五三屋台ラーメン
+            </div>
+            <div class="text-slate-600 mt-1">
+              TEL：<a href="tel:0933581872" class="font-semibold text-amber-800 hover:underline">0933-581872</a>
+            </div>
+          </div>
+          <div class="mt-2 text-right">
+            <a href="https://maps.app.goo.gl/1quzSasgPxd1onwAA" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-amber-600 text-white rounded text-[11px] hover:bg-amber-700 transition-colors">
+              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 住宿資訊導覽卡片（僅在住宿安排分頁顯示） -->
-    <div id="lodgingInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3 mb-4 shadow-sm text-xs">
+    <div id="lodgingInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3 mb-4 shadow-sm text-xs no-print">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <!-- 知達會館 -->
         <div class="flex items-center justify-between p-2.5 bg-sky-50/70 border border-sky-100 rounded-lg">
@@ -320,7 +396,7 @@
     let activeSortDirection = null;
     let columnFilters = {};
 
-    // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫
+    // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫[cite: 1]
     let scheduleData = [
       { id: 1, date: "10/30 (五)", startTime: "", endTime: "", duration: "", location: "", activity: "場佈\n事前綵排", note: "" },
       { id: 2, date: "10/31 (六)", startTime: "09:00", endTime: "10:00", duration: "60", location: "", activity: "接駁車：高鐵台中站－督賀蔬食", note: "- 事前公告+報名；公告住宿費用、提醒重啟夥伴帶「集點卡」\n- 車資：1,200/人（重啟、接班人相同）\n- 遊覽車預定 9:20發車-6號出口（車掌/長：廖培芯）\n- 確認人數，回報出車→需行政支援：勿帶葷食" },
@@ -343,7 +419,7 @@
       { id: 19, date: "備註說明", startTime: "", endTime: "", duration: "", location: "", activity: "遊覽車接駁安排（培芯車長）", note: "遊覽車36人（培芯車長）\n10/31\n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 09:30 知達送到正巧\n- 13:30 正巧出發到台中高鐵" }
     ];
 
-    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）
+    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）[cite: 1]
     let rawDirectoryData = [
       { team: "白", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯-妻, 林政緯-看護" },
       { team: "白", name: "林政緯-妻", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-看護" },
@@ -456,7 +532,7 @@
                 const parsed = results.data.map(r => {
                   const name = r['姓名'] || '';
                   let rest = r['餐廳'] || '';
-                  if (name === '吳佩容') rest = 'NO'; // 吳佩容於餐飲中移除
+                  if (name === '吳佩容') rest = 'NO';
 
                   return {
                     team: r['隊別'] || '',
@@ -549,6 +625,14 @@
         lodging: '即時全文檢索（住宿安排）...'
       };
       searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
+
+      // 餐飲資訊卡片顯示控制
+      const diningInfoCard = document.getElementById('diningInfoCard');
+      if (tabKey === 'dining') {
+        diningInfoCard.classList.remove('hidden');
+      } else {
+        diningInfoCard.classList.add('hidden');
+      }
 
       // 住宿資訊卡片顯示控制
       const lodgingInfoCard = document.getElementById('lodgingInfoCard');
@@ -962,7 +1046,6 @@
           ? '<i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>'
           : '<i class="fa-solid fa-landmark text-sky-600 mr-1.5"></i>';
 
-        // 聯絡人以紅字隔行顯示
         let nameCellHtml = `<div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>`;
         if (item.name === '杜志峰') {
           nameCellHtml = `

@@ -122,6 +122,16 @@
       </div>
       
       <div class="flex items-center space-x-2">
+        <!-- 點名模式切換按鈕 -->
+        <button id="checkinToggleBtn" onclick="handleCheckinModeToggle()" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100">
+          <i id="checkinIcon" class="fa-solid fa-user-check"></i>
+          <span id="checkinText">開啟點名模式</span>
+        </button>
+        <!-- 重設簽到資料按鈕（需密碼） -->
+        <button id="resetCheckinBtn" onclick="promptResetCheckin()" class="hidden px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-colors flex items-center space-x-1 shadow-sm" title="清空所有簽到資料">
+          <i class="fa-solid fa-arrow-rotate-left text-rose-500"></i>
+          <span>重設簽到</span>
+        </button>
         <button id="refreshBtn" onclick="manualRefreshData()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
           <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
           <span>重新整理</span>
@@ -181,7 +191,7 @@
             <i class="fa-solid fa-plus mr-1"></i>新增一筆
           </button>
           <button id="toggleEditModeBtn" onclick="handleScheduleEditToggle()" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 transition-colors flex items-center space-x-1">
-            <i class="fa-solid fa-pen-to-square text-slate-500"></i>
+            <i id="editBtnIcon" class="fa-solid fa-pen-to-square text-slate-500"></i>
             <span id="editBtnText">編輯流程</span>
           </button>
         </div>
@@ -192,122 +202,203 @@
       </div>
     </div>
 
-    <!-- 餐飲安排四家餐廳資訊導覽卡片（僅在餐飲安排分頁顯示） -->
+    <!-- 交通安排專屬簽到進度與 LINE 回報列 -->
+    <div id="trafficCheckinBar" class="hidden bg-white border border-teal-200 rounded-xl p-3.5 mb-4 shadow-sm text-xs no-print flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-1.5 font-bold text-teal-900">
+          <i class="fa-solid fa-bus text-teal-600 text-sm"></i>
+          <span>遊覽車報到清點（車長 廖培芯）</span>
+        </div>
+        <div class="flex items-center space-x-3 text-slate-700">
+          <span class="bg-teal-50 border border-teal-200 px-2 py-0.5 rounded font-mono">
+            去程上車：<strong id="trafficOutCount" class="text-teal-700">0/36</strong>
+          </span>
+          <span class="bg-teal-50 border border-teal-200 px-2 py-0.5 rounded font-mono">
+            回程上車：<strong id="trafficBackCount" class="text-teal-700">0/36</strong>
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="copyTrafficUncheckedList('out')" class="px-2.5 py-1 bg-white border border-teal-300 text-teal-800 hover:bg-teal-50 rounded font-semibold transition-colors flex items-center space-x-1 shadow-2xs">
+          <i class="fa-regular fa-copy"></i>
+          <span>複製去程未到</span>
+        </button>
+        <button onclick="copyTrafficUncheckedList('back')" class="px-2.5 py-1 bg-white border border-teal-300 text-teal-800 hover:bg-teal-50 rounded font-semibold transition-colors flex items-center space-x-1 shadow-2xs">
+          <i class="fa-regular fa-copy"></i>
+          <span>複製回程未到</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 餐飲安排四家餐廳資訊導覽卡片（含入席與接駁車到齊進度，及各餐廳 LINE 回報） -->
     <div id="diningInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 mb-4 shadow-sm text-xs no-print">
-      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center">
-        <i class="fa-solid fa-utensils mr-1.5 text-emerald-600"></i>午間餐訪餐廳聯絡資訊
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+        <div class="flex items-center">
+          <i class="fa-solid fa-utensils mr-1.5 text-emerald-600"></i>午間餐訪餐廳聯絡資訊與各隊點名
+        </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <!-- 弎食鉄板料理 -->
         <div class="p-2.5 bg-rose-50/70 border border-rose-100 rounded-lg flex flex-col justify-between">
           <div>
-            <div class="font-bold text-slate-900 text-xs flex items-center">
-              <i class="fa-solid fa-fire-burner text-rose-600 mr-1.5"></i>弎食鉄板料理
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-fire-burner text-rose-600 mr-1.5"></i>弎食鉄板料理</span>
+              <a href="https://maps.app.goo.gl/c1w7ijdQV4kwLfw86" target="_blank" class="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-rose-600 text-white rounded text-[10px] hover:bg-rose-700 transition-colors">
+                <i class="fa-solid fa-location-dot text-[9px]"></i><span>導航</span>
+              </a>
             </div>
             <div class="text-slate-600 mt-1">
               TEL：<a href="tel:0981930305" class="font-semibold text-rose-800 hover:underline">0981-930305</a>
             </div>
+            <!-- 即時進度顯示：入席與接駁車 -->
+            <div class="mt-1.5 flex flex-wrap gap-1 font-mono text-[10px]">
+              <span id="diningStat-弎食鉄板" class="bg-white px-1.5 py-0.5 rounded border border-rose-200 text-rose-800">入席: 0/0</span>
+              <span id="diningBusStat-弎食鉄板" class="bg-white px-1.5 py-0.5 rounded border border-teal-200 text-teal-800">搭車: 0/0</span>
+            </div>
           </div>
-          <div class="mt-2 text-right">
-            <a href="https://maps.app.goo.gl/c1w7ijdQV4kwLfw86" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-rose-600 text-white rounded text-[11px] hover:bg-rose-700 transition-colors">
-              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
-            </a>
+          <div class="mt-2.5 flex items-center justify-between pt-1.5 border-t border-rose-100">
+            <button onclick="markAllDiningArrived('弎食鉄板')" class="px-1.5 py-0.5 bg-white border border-rose-200 text-rose-700 hover:bg-rose-100 rounded text-[10px] font-semibold" title="全隊快速入席">全入席 ✔</button>
+            <div class="space-x-1">
+              <button onclick="copyDiningUncheckedList('弎食鉄板', 'person')" class="px-1.5 py-0.5 bg-white border border-rose-200 text-rose-700 hover:bg-rose-100 rounded text-[10px]" title="複製未入席名單貼到 LINE">未入席</button>
+              <button onclick="copyDiningUncheckedList('弎食鉄板', 'bus')" class="px-1.5 py-0.5 bg-white border border-teal-200 text-teal-700 hover:bg-teal-100 rounded text-[10px]" title="複製未上接駁車名單貼到 LINE">未搭車</button>
+            </div>
           </div>
         </div>
 
         <!-- 植田割烹 -->
         <div class="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-lg flex flex-col justify-between">
           <div>
-            <div class="font-bold text-slate-900 text-xs flex items-center">
-              <i class="fa-solid fa-fish text-emerald-600 mr-1.5"></i>植田割烹
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-fish text-emerald-600 mr-1.5"></i>植田割烹</span>
+              <a href="https://maps.app.goo.gl/iaRERmMCGPQs8jzFA" target="_blank" class="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] hover:bg-emerald-700 transition-colors">
+                <i class="fa-solid fa-location-dot text-[9px]"></i><span>導航</span>
+              </a>
             </div>
             <div class="text-slate-600 mt-1">
               TEL：<a href="tel:0928385269" class="font-semibold text-emerald-800 hover:underline">0928-385269</a>
             </div>
+            <div class="mt-1.5 flex flex-wrap gap-1 font-mono text-[10px]">
+              <span id="diningStat-植田割烹" class="bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-800">入席: 0/0</span>
+              <span id="diningBusStat-植田割烹" class="bg-white px-1.5 py-0.5 rounded border border-teal-200 text-teal-800">搭車: 0/0</span>
+            </div>
           </div>
-          <div class="mt-2 text-right">
-            <a href="https://maps.app.goo.gl/iaRERmMCGPQs8jzFA" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-600 text-white rounded text-[11px] hover:bg-emerald-700 transition-colors">
-              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
-            </a>
+          <div class="mt-2.5 flex items-center justify-between pt-1.5 border-t border-emerald-100">
+            <button onclick="markAllDiningArrived('植田割烹')" class="px-1.5 py-0.5 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded text-[10px] font-semibold">全入席 ✔</button>
+            <div class="space-x-1">
+              <button onclick="copyDiningUncheckedList('植田割烹', 'person')" class="px-1.5 py-0.5 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded text-[10px]">未入席</button>
+              <button onclick="copyDiningUncheckedList('植田割烹', 'bus')" class="px-1.5 py-0.5 bg-white border border-teal-200 text-teal-700 hover:bg-teal-100 rounded text-[10px]">未搭車</button>
+            </div>
           </div>
         </div>
 
         <!-- 湫禾壽喜燒 -->
         <div class="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-lg flex flex-col justify-between">
           <div>
-            <div class="font-bold text-slate-900 text-xs flex items-center">
-              <i class="fa-solid fa-plate-wheat text-indigo-600 mr-1.5"></i>湫禾壽喜燒
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-plate-wheat text-indigo-600 mr-1.5"></i>湫禾壽喜燒</span>
+              <a href="https://maps.app.goo.gl/9uTNFLocg2wbAAMn8" target="_blank" class="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[10px] hover:bg-indigo-700 transition-colors">
+                <i class="fa-solid fa-location-dot text-[9px]"></i><span>導航</span>
+              </a>
             </div>
             <div class="text-slate-600 mt-1">
               TEL：<a href="tel:0972822535" class="font-semibold text-indigo-800 hover:underline">0972-822535</a>
             </div>
+            <div class="mt-1.5 flex flex-wrap gap-1 font-mono text-[10px]">
+              <span id="diningStat-湫禾壽喜燒" class="bg-white px-1.5 py-0.5 rounded border border-indigo-200 text-indigo-800">入席: 0/0</span>
+              <span id="diningBusStat-湫禾壽喜燒" class="bg-white px-1.5 py-0.5 rounded border border-teal-200 text-teal-800">搭車: 0/0</span>
+            </div>
           </div>
-          <div class="mt-2 text-right">
-            <a href="https://maps.app.goo.gl/9uTNFLocg2wbAAMn8" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-indigo-600 text-white rounded text-[11px] hover:bg-indigo-700 transition-colors">
-              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
-            </a>
+          <div class="mt-2.5 flex items-center justify-between pt-1.5 border-t border-indigo-100">
+            <button onclick="markAllDiningArrived('湫禾壽喜燒')" class="px-1.5 py-0.5 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded text-[10px] font-semibold">全入席 ✔</button>
+            <div class="space-x-1">
+              <button onclick="copyDiningUncheckedList('湫禾壽喜燒', 'person')" class="px-1.5 py-0.5 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded text-[10px]">未入席</button>
+              <button onclick="copyDiningUncheckedList('湫禾壽喜燒', 'bus')" class="px-1.5 py-0.5 bg-white border border-teal-200 text-teal-700 hover:bg-teal-100 rounded text-[10px]">未搭車</button>
+            </div>
           </div>
         </div>
 
         <!-- 麵五三屋台ラーメン -->
         <div class="p-2.5 bg-amber-50/70 border border-amber-100 rounded-lg flex flex-col justify-between">
           <div>
-            <div class="font-bold text-slate-900 text-xs flex items-center">
-              <i class="fa-solid fa-bowl-food text-amber-600 mr-1.5"></i>麵五三屋台ラーメン
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-bowl-food text-amber-600 mr-1.5"></i>麵五三屋台</span>
+              <a href="https://maps.app.goo.gl/1quzSasgPxd1onwAA" target="_blank" class="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-amber-600 text-white rounded text-[10px] hover:bg-amber-700 transition-colors">
+                <i class="fa-solid fa-location-dot text-[9px]"></i><span>導航</span>
+              </a>
             </div>
             <div class="text-slate-600 mt-1">
               TEL：<a href="tel:0933581872" class="font-semibold text-amber-800 hover:underline">0933-581872</a>
             </div>
+            <div class="mt-1.5 flex flex-wrap gap-1 font-mono text-[10px]">
+              <span id="diningStat-麵五三屋" class="bg-white px-1.5 py-0.5 rounded border border-amber-200 text-amber-800">入席: 0/0</span>
+              <span id="diningBusStat-麵五三屋" class="bg-white px-1.5 py-0.5 rounded border border-teal-200 text-teal-800">搭車: 0/0</span>
+            </div>
           </div>
-          <div class="mt-2 text-right">
-            <a href="https://maps.app.goo.gl/1quzSasgPxd1onwAA" target="_blank" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-amber-600 text-white rounded text-[11px] hover:bg-amber-700 transition-colors">
-              <i class="fa-solid fa-location-dot text-[10px]"></i><span>地圖導航</span>
-            </a>
+          <div class="mt-2.5 flex items-center justify-between pt-1.5 border-t border-amber-100">
+            <button onclick="markAllDiningArrived('麵五三屋')" class="px-1.5 py-0.5 bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 rounded text-[10px] font-semibold">全入席 ✔</button>
+            <div class="space-x-1">
+              <button onclick="copyDiningUncheckedList('麵五三屋', 'person')" class="px-1.5 py-0.5 bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 rounded text-[10px]">未入席</button>
+              <button onclick="copyDiningUncheckedList('麵五三屋', 'bus')" class="px-1.5 py-0.5 bg-white border border-teal-200 text-teal-700 hover:bg-teal-100 rounded text-[10px]">未搭車</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 住宿資訊導覽卡片（僅在住宿安排分頁顯示） -->
+    <!-- 住宿資訊導覽卡片（含雙會館到齊進度與 LINE 回報） -->
     <div id="lodgingInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3 mb-4 shadow-sm text-xs no-print">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <!-- 知達會館 -->
-        <div class="flex items-center justify-between p-2.5 bg-sky-50/70 border border-sky-100 rounded-lg">
-          <div>
-            <div class="font-bold text-slate-900 text-sm flex items-center">
-              <i class="fa-solid fa-hotel text-sky-600 mr-1.5"></i>知達工藝會館
+        <div class="p-2.5 bg-sky-50/70 border border-sky-100 rounded-lg flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-bold text-slate-900 text-sm flex items-center">
+                <i class="fa-solid fa-hotel text-sky-600 mr-1.5"></i>知達工藝會館
+                <span class="ml-2 text-[11px] text-rose-600 font-semibold">（聯絡人：杜志峰）</span>
+              </div>
+              <div class="text-slate-600 mt-0.5">
+                TEL：<a href="tel:0492306969" class="font-semibold text-sky-800 hover:underline">049-2306969</a>
+              </div>
             </div>
-            <div class="text-slate-600 mt-1">
-              TEL：<a href="tel:0492306969" class="font-semibold text-sky-800 hover:underline">049-2306969</a>
-            </div>
+            <span class="bg-white px-2 py-0.5 rounded border border-sky-200 text-sky-800 font-mono font-bold text-xs" id="lodgingStat-知達">
+              抵達：0 / 0
+            </span>
           </div>
-          <div class="flex items-center space-x-2">
-            <a href="https://www.zhidacaotun.com.tw/Home/Aboutzida" target="_blank" class="px-2.5 py-1 bg-white text-sky-700 border border-sky-200 rounded hover:bg-sky-100 transition-colors flex items-center space-x-1 shadow-xs">
-              <i class="fa-solid fa-globe"></i><span>官網</span>
-            </a>
-            <a href="https://maps.app.goo.gl/2a2QDY48EoQpQ9Sc6" target="_blank" class="px-2.5 py-1 bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors flex items-center space-x-1 shadow-xs">
-              <i class="fa-solid fa-location-dot"></i><span>地圖導航</span>
-            </a>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-sky-100">
+            <button onclick="copyLodgingUncheckedList('知達')" class="px-2 py-0.5 bg-white border border-sky-200 text-sky-700 hover:bg-sky-100 rounded text-xs flex items-center space-x-1">
+              <i class="fa-regular fa-copy"></i><span>複製未抵達名單 (知達)</span>
+            </button>
+            <div class="flex items-center space-x-1.5">
+              <a href="https://www.zhidacaotun.com.tw/Home/Aboutzida" target="_blank" class="px-2 py-0.5 bg-white text-sky-700 border border-sky-200 rounded hover:bg-sky-100 transition-colors">官網</a>
+              <a href="https://maps.app.goo.gl/2a2QDY48EoQpQ9Sc6" target="_blank" class="px-2 py-0.5 bg-sky-600 text-white rounded hover:bg-sky-700 transition-colors">導航</a>
+            </div>
           </div>
         </div>
 
         <!-- 正巧文旅 -->
-        <div class="flex items-center justify-between p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-lg">
-          <div>
-            <div class="font-bold text-slate-900 text-sm flex items-center">
-              <i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>正巧文旅
+        <div class="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-lg flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-bold text-slate-900 text-sm flex items-center">
+                <i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>正巧文旅
+                <span class="ml-2 text-[11px] text-rose-600 font-semibold">（聯絡人：吳緁苓）</span>
+              </div>
+              <div class="text-slate-600 mt-0.5">
+                TEL：<a href="tel:0492357166" class="font-semibold text-emerald-800 hover:underline">049-2357166</a>
+              </div>
             </div>
-            <div class="text-slate-600 mt-1">
-              TEL：<a href="tel:0492357166" class="font-semibold text-emerald-800 hover:underline">049-2357166</a>
-            </div>
+            <span class="bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-800 font-mono font-bold text-xs" id="lodgingStat-正巧">
+              抵達：0 / 0
+            </span>
           </div>
-          <div class="flex items-center space-x-2">
-            <a href="https://www.booking-owlnest.com/dohohotel?lang=zh_TW&adult=1&child=0&infant=0" target="_blank" class="px-2.5 py-1 bg-white text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors flex items-center space-x-1 shadow-xs">
-              <i class="fa-solid fa-globe"></i><span>官網</span>
-            </a>
-            <a href="https://maps.app.goo.gl/8JsYvNw56jJnzLmN9" target="_blank" class="px-2.5 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors flex items-center space-x-1 shadow-xs">
-              <i class="fa-solid fa-location-dot"></i><span>地圖導航</span>
-            </a>
+          <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-emerald-100">
+            <button onclick="copyLodgingUncheckedList('正巧')" class="px-2 py-0.5 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded text-xs flex items-center space-x-1">
+              <i class="fa-regular fa-copy"></i><span>複製未抵達名單 (正巧)</span>
+            </button>
+            <div class="flex items-center space-x-1.5">
+              <a href="https://www.booking-owlnest.com/dohohotel?lang=zh_TW&adult=1&child=0&infant=0" target="_blank" class="px-2 py-0.5 bg-white text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors">官網</a>
+              <a href="https://maps.app.goo.gl/8JsYvNw56jJnzLmN9" target="_blank" class="px-2 py-0.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors">導航</a>
+            </div>
           </div>
         </div>
       </div>
@@ -315,7 +406,7 @@
 
     <!-- 主要資料表格區域 -->
     <div id="printableContent" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-      <div class="table-container flex-1">
+      <div id="tableScrollContainer" class="table-container flex-1">
         <table id="mainDataTable" class="w-full text-left border-collapse table-auto">
           <thead id="tableHead" class="sticky-header border-b border-slate-300 select-none"></thead>
           <tbody id="tableBody" class="divide-y divide-slate-200"></tbody>
@@ -363,20 +454,53 @@
     </div>
   </div>
 
-  <!-- 密碼輸入通用彈窗 -->
+  <!-- 密碼輸入通用彈窗 (支援 Enter 鍵送出與無阻擋紅字提示) -->
   <div id="passwordModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5 border border-slate-200">
-      <div class="flex items-center space-x-2 text-slate-900 font-bold text-base mb-2">
+      <div class="flex items-center space-x-2 text-slate-900 font-bold text-base mb-1">
         <i class="fa-solid fa-lock text-emerald-600"></i>
         <span id="passwordModalTitle">工作人員身分驗證</span>
       </div>
-      <p id="passwordModalDesc" class="text-xs text-slate-500 mb-3">請輸入管理密碼以執行此操作：</p>
-      <input type="password" id="passwordInput" placeholder="請輸入密碼" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none mb-4 tracking-widest font-mono">
-      <div class="flex items-center justify-end space-x-2">
-        <button onclick="closePasswordModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">取消</button>
-        <button id="passwordConfirmBtn" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">確認</button>
+      <p id="passwordModalDesc" class="text-xs text-slate-500 mb-3">此操作限授權工作人員使用，請輸入管理密碼：</p>
+      
+      <input type="password" id="passwordInput" placeholder="請輸入密碼" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none tracking-widest font-mono">
+      <p id="passwordErrorMsg" class="hidden text-rose-600 text-xs mt-1.5 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>密碼錯誤，請重新輸入！</p>
+      
+      <div class="flex items-center justify-end space-x-2 mt-4">
+        <button type="button" onclick="closePasswordModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">取消</button>
+        <button type="button" onclick="submitPasswordCheck()" id="passwordConfirmBtn" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">確認</button>
       </div>
     </div>
+  </div>
+
+  <!-- 備用複製彈窗（當瀏覽器 Clipboard API 受限時自動彈出供一鍵複製） -->
+  <div id="copyModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-slate-200 flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div class="font-bold text-slate-900 text-sm flex items-center space-x-1.5">
+          <i class="fa-regular fa-clipboard text-emerald-600"></i>
+          <span id="copyModalTitle">LINE 回報名單文字</span>
+        </div>
+        <button onclick="closeCopyModal()" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-500 mt-2 mb-2">已為您排版好未到名單，請點擊下方按鈕或長按框內文字複製貼到 LINE：</p>
+      <textarea id="copyModalTextarea" rows="6" readonly class="w-full p-2.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg outline-none select-all focus:bg-white"></textarea>
+      <div class="flex items-center justify-end space-x-2 mt-3 pt-2 border-t border-slate-100">
+        <button onclick="closeCopyModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">關閉</button>
+        <button onclick="copyTextareaContent()" class="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm flex items-center space-x-1">
+          <i class="fa-regular fa-copy"></i>
+          <span>一鍵全選並複製</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮動 Toast 狀態通知 -->
+  <div id="toastNotification" class="hidden fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-slate-900 transition-all">
+    <i id="toastIcon" class="fa-solid fa-circle-info text-sky-400"></i>
+    <span id="toastMessage">已完成操作</span>
   </div>
 
   <script>
@@ -389,6 +513,7 @@
     let currentTab = 'schedule';
     let searchQuery = '';
     let isScheduleEditing = false;
+    let isCheckinMode = false;
     let pendingPasswordCallback = null;
 
     let activeFilterColumn = null;
@@ -396,7 +521,16 @@
     let activeSortDirection = null;
     let columnFilters = {};
 
-    // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫[cite: 1]
+    // 簽到快取儲存物件 (由 localStorage 載入)
+    let checkinStore = {
+      trafficOut: {},     // 去程遊覽車 { [name]: true }
+      trafficBack: {},    // 回程遊覽車 { [name]: true }
+      diningPerson: {},   // 餐廳入席 { [name]: true }
+      diningBus: {},      // 前往餐廳之接駁遊覽車 { [name]: true }
+      lodgingPerson: {}   // 住宿抵達 { [name]: true }
+    };
+
+    // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫
     let scheduleData = [
       { id: 1, date: "10/30 (五)", startTime: "", endTime: "", duration: "", location: "", activity: "場佈\n事前綵排", note: "" },
       { id: 2, date: "10/31 (六)", startTime: "09:00", endTime: "10:00", duration: "60", location: "", activity: "接駁車：高鐵台中站－督賀蔬食", note: "- 事前公告+報名；公告住宿費用、提醒重啟夥伴帶「集點卡」\n- 車資：1,200/人（重啟、接班人相同）\n- 遊覽車預定 9:20發車-6號出口（車掌/長：廖培芯）\n- 確認人數，回報出車→需行政支援：勿帶葷食" },
@@ -419,7 +553,7 @@
       { id: 19, date: "備註說明", startTime: "", endTime: "", duration: "", location: "", activity: "遊覽車接駁安排（培芯車長）", note: "遊覽車36人（培芯車長）\n10/31\n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 09:30 知達送到正巧\n- 13:30 正巧出發到台中高鐵" }
     ];
 
-    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）[cite: 1]
+    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）
     let rawDirectoryData = [
       { team: "白", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯-妻, 林政緯-看護" },
       { team: "白", name: "林政緯-妻", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-看護" },
@@ -493,9 +627,21 @@
        ========================================================= */
     window.addEventListener('DOMContentLoaded', () => {
       updateTimestampDisplay();
+      loadCheckinFromStorage();
       calculateDirectoryRoommates();
-      renderCurrentTab();
+      switchTab('schedule');
       fetchCloudDataSilently();
+
+      // 密碼輸入框綁定 Enter 鍵事件
+      const pwdInput = document.getElementById('passwordInput');
+      if (pwdInput) {
+        pwdInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitPasswordCheck();
+          }
+        });
+      }
     });
 
     function updateTimestampDisplay() {
@@ -506,6 +652,292 @@
       const hh = String(now.getHours()).padStart(2, '0');
       const min = String(now.getMinutes()).padStart(2, '0');
       document.getElementById('updateTimestamp').textContent = `${yy}'${mm}${dd}-${hh}${min}`;
+    }
+
+    /* =========================================================
+       3. 簽到報到資料儲存與狀態管理 (localStorage)
+       ========================================================= */
+    function loadCheckinFromStorage() {
+      try {
+        const out = localStorage.getItem('restart_checkin_traffic_out');
+        const back = localStorage.getItem('restart_checkin_traffic_back');
+        const dPerson = localStorage.getItem('restart_checkin_dining_person');
+        const dBus = localStorage.getItem('restart_checkin_dining_bus');
+        const lPerson = localStorage.getItem('restart_checkin_lodging_person');
+
+        if (out) checkinStore.trafficOut = JSON.parse(out);
+        if (back) checkinStore.trafficBack = JSON.parse(back);
+        if (dPerson) checkinStore.diningPerson = JSON.parse(dPerson);
+        if (dBus) checkinStore.diningBus = JSON.parse(dBus);
+        if (lPerson) checkinStore.lodgingPerson = JSON.parse(lPerson);
+      } catch (e) {
+        console.warn('載入簽到快取失敗，使用預設值', e);
+      }
+    }
+
+    function saveCheckinToStorage() {
+      try {
+        localStorage.setItem('restart_checkin_traffic_out', JSON.stringify(checkinStore.trafficOut));
+        localStorage.setItem('restart_checkin_traffic_back', JSON.stringify(checkinStore.trafficBack));
+        localStorage.setItem('restart_checkin_dining_person', JSON.stringify(checkinStore.diningPerson));
+        localStorage.setItem('restart_checkin_dining_bus', JSON.stringify(checkinStore.diningBus));
+        localStorage.setItem('restart_checkin_lodging_person', JSON.stringify(checkinStore.lodgingPerson));
+      } catch (e) {
+        console.warn('寫入簽到快取失敗', e);
+      }
+    }
+
+    function handleCheckinModeToggle() {
+      if (!isCheckinMode) {
+        requestPasswordAuth(() => {
+          isCheckinMode = true;
+          const btn = document.getElementById('checkinToggleBtn');
+          btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm bg-emerald-600 text-white hover:bg-emerald-700";
+          document.getElementById('checkinText').textContent = "鎖定點名模式";
+          document.getElementById('checkinIcon').className = "fa-solid fa-lock-open";
+          document.getElementById('resetCheckinBtn').classList.remove('hidden');
+          renderCurrentTab();
+          showToast('已解鎖點名模式，可開始打卡清點！', 'success');
+        });
+      } else {
+        isCheckinMode = false;
+        const btn = document.getElementById('checkinToggleBtn');
+        btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100";
+        document.getElementById('checkinText').textContent = "開啟點名模式";
+        document.getElementById('checkinIcon').className = "fa-solid fa-user-check";
+        document.getElementById('resetCheckinBtn').classList.add('hidden');
+        renderCurrentTab();
+        showToast('點名模式已鎖定（純瀏覽模式）', 'info');
+      }
+    }
+
+    function promptResetCheckin() {
+      requestPasswordAuth(() => {
+        checkinStore = {
+          trafficOut: {},
+          trafficBack: {},
+          diningPerson: {},
+          diningBus: {},
+          lodgingPerson: {}
+        };
+        saveCheckinToStorage();
+        renderCurrentTab();
+        showToast('已清空所有簽到打卡資料', 'success');
+      });
+    }
+
+    function toggleTrafficCheckin(type, name) {
+      if (!isCheckinMode) {
+        showToast('目前為瀏覽模式，請點擊右上角「開啟點名模式」解鎖', 'info');
+        return;
+      }
+      if (type === 'out') {
+        checkinStore.trafficOut[name] = !checkinStore.trafficOut[name];
+      } else {
+        checkinStore.trafficBack[name] = !checkinStore.trafficBack[name];
+      }
+      saveCheckinToStorage();
+      renderCurrentTab();
+    }
+
+    function toggleDiningCheckin(targetType, name) {
+      if (!isCheckinMode) {
+        showToast('目前為瀏覽模式，請點擊右上角「開啟點名模式」解鎖', 'info');
+        return;
+      }
+      if (targetType === 'person') {
+        checkinStore.diningPerson[name] = !checkinStore.diningPerson[name];
+      } else {
+        checkinStore.diningBus[name] = !checkinStore.diningBus[name];
+      }
+      saveCheckinToStorage();
+      renderCurrentTab();
+    }
+
+    function toggleLodgingCheckin(name) {
+      if (!isCheckinMode) {
+        showToast('目前為瀏覽模式，請點擊右上角「開啟點名模式」解鎖', 'info');
+        return;
+      }
+      checkinStore.lodgingPerson[name] = !checkinStore.lodgingPerson[name];
+      saveCheckinToStorage();
+      renderCurrentTab();
+    }
+
+    function markAllDiningArrived(restaurantName) {
+      if (!isCheckinMode) {
+        showToast('目前為瀏覽模式，請點擊右上角「開啟點名模式」解鎖', 'info');
+        return;
+      }
+      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      list.forEach(i => {
+        checkinStore.diningPerson[i.name] = true;
+      });
+      saveCheckinToStorage();
+      renderCurrentTab();
+      showToast(`${restaurantName} 全體成員已標記為入席！`, 'success');
+    }
+
+    /* =========================================================
+       4. 跨平台強健剪貼簿複製機制（支援手機、LINE 內嵌瀏覽器）
+       ========================================================= */
+    function copyTextToClipboard(text, successToastMsg) {
+      if (!text) return;
+      
+      // 1. 優先嘗試現代 Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            showToast(successToastMsg, 'success');
+          })
+          .catch(() => {
+            // 若遭安全性拒絕，切換至傳統 textarea 複製
+            fallbackCopyText(text, successToastMsg);
+          });
+      } else {
+        fallbackCopyText(text, successToastMsg);
+      }
+    }
+
+    function fallbackCopyText(text, successToastMsg) {
+      let textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.width = "2em";
+      textArea.style.height = "2em";
+      textArea.style.padding = "0";
+      textArea.style.border = "none";
+      textArea.style.outline = "none";
+      textArea.style.boxShadow = "none";
+      textArea.style.background = "transparent";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      let successful = false;
+      try {
+        successful = document.execCommand('copy');
+      } catch (err) {
+        successful = false;
+      }
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        showToast(successToastMsg, 'success');
+      } else {
+        // 若雙層複製皆受限（常見於高權限手機 LINE 內嵌環境），直接彈出文字窗供一鍵選取複製
+        openCopyModal(text);
+      }
+    }
+
+    function openCopyModal(text) {
+      const modal = document.getElementById('copyModal');
+      const textarea = document.getElementById('copyModalTextarea');
+      textarea.value = text;
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        textarea.focus();
+        textarea.select();
+      }, 50);
+    }
+
+    function closeCopyModal() {
+      document.getElementById('copyModal').classList.add('hidden');
+    }
+
+    function copyTextareaContent() {
+      const textarea = document.getElementById('copyModalTextarea');
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('名單文字已複製！可直接切換至 LINE 貼上', 'success');
+        closeCopyModal();
+      } catch (e) {
+        showToast('請直接長按框內文字選取複製', 'info');
+      }
+    }
+
+    /* 一鍵複製未到名單格式化文字 */
+    function copyTrafficUncheckedList(type) {
+      const isOut = (type === 'out');
+      const title = isOut ? '【遊覽車去程 未上車名單】' : '【遊覽車回程 未上車名單】';
+      const targetTraffic = isOut ? 'trafficOut' : 'trafficBack';
+      const storeKey = isOut ? 'trafficOut' : 'trafficBack';
+
+      const busMembers = rawDirectoryData.filter(i => i[targetTraffic] === '遊覽車');
+      const unarrived = busMembers.filter(i => !checkinStore[storeKey][i.name]);
+
+      const now = new Date();
+      const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      let text = `${title}（共 ${unarrived.length} 位）\n`;
+      if (unarrived.length === 0) {
+        text += `全體已全員到齊 ✔\n`;
+      } else {
+        unarrived.forEach((i, idx) => {
+          text += `${idx + 1}. ${i.name}\n`;
+        });
+      }
+      text += `回報時間：${timeStr}`;
+
+      copyTextToClipboard(text, isOut ? '已複製【去程未到名單】！可直接貼至 LINE' : '已複製【回程未到名單】！可直接貼至 LINE');
+    }
+
+    function copyDiningUncheckedList(restaurantName, reportType = 'person') {
+      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      const isBus = (reportType === 'bus');
+
+      let unarrived = [];
+      let title = '';
+
+      if (isBus) {
+        // 接駁車清點（排除自駕）
+        const busMembers = list.filter(i => (i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行'));
+        unarrived = busMembers.filter(i => !checkinStore.diningBus[i.name]);
+        title = `【${restaurantName} 接駁車未上車名單】`;
+      } else {
+        // 人名入席清點
+        unarrived = list.filter(i => !checkinStore.diningPerson[i.name]);
+        title = `【${restaurantName} 未入席名單】`;
+      }
+
+      const now = new Date();
+      const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      let text = `${title}（共 ${unarrived.length} 位）\n`;
+      if (unarrived.length === 0) {
+        text += `全體已全員到齊 ✔\n`;
+      } else {
+        unarrived.forEach((i, idx) => {
+          text += `${idx + 1}. ${i.name}\n`;
+        });
+      }
+      text += `回報時間：${timeStr}`;
+
+      copyTextToClipboard(text, `已複製【${restaurantName}】${isBus ? '未搭車' : '未入席'}名單！可直接貼至 LINE`);
+    }
+
+    function copyLodgingUncheckedList(hotelName) {
+      const list = rawDirectoryData.filter(i => i.hotel === hotelName && i.name !== '彭偉峰');
+      const unarrived = list.filter(i => !checkinStore.lodgingPerson[i.name]);
+
+      const now = new Date();
+      const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      let text = `【${hotelName} 未抵達名單】（共 ${unarrived.length} 位）\n`;
+      if (unarrived.length === 0) {
+        text += `全體已全員到齊 ✔\n`;
+      } else {
+        unarrived.forEach((i, idx) => {
+          text += `${idx + 1}. ${i.name} (${i.roomType})\n`;
+        });
+      }
+      text += `回報時間：${timeStr}`;
+
+      copyTextToClipboard(text, `已複製【${hotelName}】未抵達名單！可直接貼至 LINE`);
     }
 
     async function fetchCloudDataSilently() {
@@ -569,10 +1001,11 @@
     function manualRefreshData() {
       updateTimestampDisplay();
       fetchCloudDataSilently();
+      showToast('已重新整理資料', 'success');
     }
 
     /* =========================================================
-       3. 室友關聯演算
+       5. 室友關聯演算
        ========================================================= */
     function calculateDirectoryRoommates() {
       const roomMap = {};
@@ -598,12 +1031,13 @@
     }
 
     /* =========================================================
-       4. 分頁切換與搜尋提示
+       6. 分頁切換與搜尋提示
        ========================================================= */
     function switchTab(tabKey) {
       currentTab = tabKey;
       isScheduleEditing = false;
       document.getElementById('editBtnText').textContent = '編輯流程';
+      document.getElementById('editBtnIcon').className = 'fa-solid fa-pen-to-square text-slate-500';
       document.getElementById('addScheduleRowBtn').classList.add('hidden');
 
       const tabs = ['schedule', 'overview', 'traffic', 'dining', 'lodging'];
@@ -626,28 +1060,22 @@
       };
       searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
 
-      // 餐飲資訊卡片顯示控制
-      const diningInfoCard = document.getElementById('diningInfoCard');
-      if (tabKey === 'dining') {
-        diningInfoCard.classList.remove('hidden');
-      } else {
-        diningInfoCard.classList.add('hidden');
-      }
+      // 導覽資訊卡與簽到控制列控制
+      const trafficBar = document.getElementById('trafficCheckinBar');
+      if (tabKey === 'traffic') trafficBar.classList.remove('hidden');
+      else trafficBar.classList.add('hidden');
 
-      // 住宿資訊卡片顯示控制
+      const diningInfoCard = document.getElementById('diningInfoCard');
+      if (tabKey === 'dining') diningInfoCard.classList.remove('hidden');
+      else diningInfoCard.classList.add('hidden');
+
       const lodgingInfoCard = document.getElementById('lodgingInfoCard');
-      if (tabKey === 'lodging') {
-        lodgingInfoCard.classList.remove('hidden');
-      } else {
-        lodgingInfoCard.classList.add('hidden');
-      }
+      if (tabKey === 'lodging') lodgingInfoCard.classList.remove('hidden');
+      else lodgingInfoCard.classList.add('hidden');
 
       const editControls = document.getElementById('scheduleEditControls');
-      if (tabKey === 'schedule') {
-        editControls.classList.remove('hidden');
-      } else {
-        editControls.classList.add('hidden');
-      }
+      if (tabKey === 'schedule') editControls.classList.remove('hidden');
+      else editControls.classList.add('hidden');
 
       renderCurrentTab();
     }
@@ -658,7 +1086,7 @@
     }
 
     /* =========================================================
-       5. 渲染各分頁內容
+       7. 渲染各分頁內容
        ========================================================= */
     function renderCurrentTab() {
       const thead = document.getElementById('tableHead');
@@ -722,7 +1150,7 @@
               <td class="p-1"><textarea rows="2" class="w-full font-semibold bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'activity', this.value)">${escapeHtml(item.activity)}</textarea></td>
               <td class="p-1"><textarea rows="3" class="w-full bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'note', this.value)">${escapeHtml(item.note)}</textarea></td>
               <td class="p-1 text-center">
-                <button onclick="deleteScheduleRow(${item.id})" class="text-rose-500 hover:text-rose-700 p-1.5"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="deleteScheduleRow(${item.id})" class="text-rose-500 hover:text-rose-700 p-1.5" title="刪除"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
           `;
@@ -840,7 +1268,7 @@
       return 'bg-white hover:bg-slate-50';
     }
 
-    /* --- [分頁3] 交通安排（緊縮寬度與加註表頭） --- */
+    /* --- [分頁3] 交通安排（去程、回程雙向點名） --- */
     function renderTrafficTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr class="text-sm">
@@ -849,8 +1277,8 @@
           <th class="py-2 px-2.5 font-semibold w-56">
             <div class="flex items-center justify-between">
               <div>
-                <span class="text-slate-800">交通-去程</span>
-                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 09:20 台中高鐵發車往正巧</span>
+                <span class="text-slate-800">交通-去程點名</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 09:20 台中高鐵發車</span>
               </div>
               <button onclick="openFilterModal('trafficOut', '交通-去程', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
                 <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficOut'] && columnFilters['trafficOut'].size > 0 ? 'text-emerald-600' : ''}"></i>
@@ -860,8 +1288,8 @@
           <th class="py-2 px-2.5 font-semibold w-56">
             <div class="flex items-center justify-between">
               <div>
-                <span class="text-slate-800">交通-回程</span>
-                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 13:30 正巧發車往台中高鐵</span>
+                <span class="text-slate-800">交通-回程點名</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 13:30 正巧發車</span>
               </div>
               <button onclick="openFilterModal('trafficBack', '交通-回程', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
                 <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficBack'] && columnFilters['trafficBack'].size > 0 ? 'text-emerald-600' : ''}"></i>
@@ -874,6 +1302,17 @@
       let list = getProcessedDirectoryList();
       countBadge.textContent = `共 ${list.length} 位人員`;
 
+      // 計算去程與回程遊覽車上車人數
+      const busOutMembers = rawDirectoryData.filter(i => i.trafficOut === '遊覽車');
+      const busBackMembers = rawDirectoryData.filter(i => i.trafficBack === '遊覽車');
+      const checkedOut = busOutMembers.filter(i => checkinStore.trafficOut[i.name]).length;
+      const checkedBack = busBackMembers.filter(i => checkinStore.trafficBack[i.name]).length;
+
+      const outStatEl = document.getElementById('trafficOutCount');
+      const backStatEl = document.getElementById('trafficBackCount');
+      if (outStatEl) outStatEl.textContent = `${checkedOut}/${busOutMembers.length}`;
+      if (backStatEl) backStatEl.textContent = `${checkedBack}/${busBackMembers.length}`;
+
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 text-sm">無符合的交通資料</td></tr>`;
         return;
@@ -883,6 +1322,38 @@
         const bgClass = getTrafficBackBgClass(item.trafficBack);
         const leaderBadge = getTrafficLeaderBadge(item);
 
+        // 去程打卡按鈕渲染
+        let checkinOutHtml = `<span class="text-xs text-slate-400 font-normal">自處/開車</span>`;
+        if (item.trafficOut === '遊覽車') {
+          const isArrived = !!checkinStore.trafficOut[item.name];
+          const btnClass = isArrived 
+            ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-xs' 
+            : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400';
+          const icon = isArrived ? '<i class="fa-solid fa-check mr-1 text-emerald-200"></i>' : '';
+          const text = isArrived ? '已上車' : '未上車';
+          checkinOutHtml = `
+            <button onclick="toggleTrafficCheckin('out', '${escapeHtml(item.name)}')" class="px-2.5 py-1 text-xs rounded-md border transition-all flex items-center ${btnClass}">
+              ${icon}<span>${text}</span>
+            </button>
+          `;
+        }
+
+        // 回程打卡按鈕渲染
+        let checkinBackHtml = `<span class="text-xs text-slate-400 font-normal">自處/開車</span>`;
+        if (item.trafficBack === '遊覽車') {
+          const isArrived = !!checkinStore.trafficBack[item.name];
+          const btnClass = isArrived 
+            ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-xs' 
+            : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400';
+          const icon = isArrived ? '<i class="fa-solid fa-check mr-1 text-emerald-200"></i>' : '';
+          const text = isArrived ? '已上車' : '未上車';
+          checkinBackHtml = `
+            <button onclick="toggleTrafficCheckin('back', '${escapeHtml(item.name)}')" class="px-2.5 py-1 text-xs rounded-md border transition-all flex items-center ${btnClass}">
+              ${icon}<span>${text}</span>
+            </button>
+          `;
+        }
+
         return `
           <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
             <td class="py-2.5 px-2 text-center text-slate-400 align-middle">${idx + 1}</td>
@@ -890,8 +1361,18 @@
               <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
               ${leaderBadge}
             </td>
-            <td class="py-2.5 px-2.5 font-semibold text-slate-800 align-middle">${escapeHtml(item.trafficOut)}</td>
-            <td class="py-2.5 px-2.5 font-semibold text-slate-800 align-middle">${escapeHtml(item.trafficBack)}</td>
+            <td class="py-2.5 px-2.5 align-middle">
+              <div class="flex items-center space-x-2">
+                <span class="font-semibold text-slate-800 min-w-[3.5rem]">${escapeHtml(item.trafficOut)}</span>
+                ${checkinOutHtml}
+              </div>
+            </td>
+            <td class="py-2.5 px-2.5 align-middle">
+              <div class="flex items-center space-x-2">
+                <span class="font-semibold text-slate-800 min-w-[3.5rem]">${escapeHtml(item.trafficBack)}</span>
+                ${checkinBackHtml}
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
@@ -912,27 +1393,69 @@
       return '';
     }
 
-    /* --- [分頁4] 餐飲安排（隊長置頂、餐廳人數顯示、素食/過敏色塊） --- */
+    /* --- [分頁4] 餐飲安排（人名入席點名、接駁車點名、表頭與卡片即時統計） --- */
     function renderDiningTab(thead, tbody, countBadge) {
+      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
+      countBadge.textContent = `共 ${list.length} 位用餐人員`;
+
+      // 計算全體用餐人員入席與遊覽車接駁上車統計
+      const totalDiningMembers = list.length;
+      const totalArrivedCount = list.filter(i => checkinStore.diningPerson[i.name]).length;
+
+      const busEligibleMembers = list.filter(i => (i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行'));
+      const totalBusCount = busEligibleMembers.length;
+      const totalBusCheckedCount = busEligibleMembers.filter(i => checkinStore.diningBus[i.name]).length;
+
+      // 表頭在「姓名」與「交通方式」欄位皆呈現即時清點進度
       thead.innerHTML = `
         <tr class="text-sm">
           <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
           ${renderHeaderTh('用餐餐廳', 'restaurant', 'w-44')}
-          ${renderHeaderTh('姓名', 'name', 'w-36')}
-          ${renderHeaderTh('飲食注意事項', 'diet', 'w-48')}
-          ${renderHeaderTh('交通方式', 'trafficOut', 'w-36')}
+          <th class="py-2.5 px-3 font-semibold w-48">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-slate-800">姓名（入席點名）</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight font-mono">已入席：${totalArrivedCount}/${totalDiningMembers}</span>
+              </div>
+              <button onclick="openFilterModal('name', '姓名', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['name'] && columnFilters['name'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
+          ${renderHeaderTh('飲食注意事項', 'diet', 'w-40')}
+          <th class="py-2.5 px-3 font-semibold w-52">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-slate-800">交通方式（接駁點名）</span>
+                <span class="block text-[11px] font-normal text-teal-700 leading-tight font-mono">遊覽車已上車：${totalBusCheckedCount}/${totalBusCount}</span>
+              </div>
+              <button onclick="openFilterModal('trafficOut', '交通方式', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficOut'] && columnFilters['trafficOut'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
         </tr>
       `;
-
-      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
-      countBadge.textContent = `共 ${list.length} 位用餐人員`;
 
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的餐飲資料</td></tr>`;
         return;
       }
 
-      // 計算各餐廳用餐人數
+      // 更新頂部四家餐廳之「入席進度」與「遊覽車接駁進度」
+      const restaurants = ['弎食鉄板', '植田割烹', '湫禾壽喜燒', '麵五三屋'];
+      restaurants.forEach(rest => {
+        const members = rawDirectoryData.filter(i => i.restaurant === rest && i.name !== '吳佩容');
+        const arrived = members.filter(i => checkinStore.diningPerson[i.name]).length;
+        const elPerson = document.getElementById(`diningStat-${rest}`);
+        if (elPerson) elPerson.textContent = `入席: ${arrived}/${members.length}`;
+
+        const busMembers = members.filter(i => (i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行'));
+        const busArrived = busMembers.filter(i => checkinStore.diningBus[i.name]).length;
+        const elBus = document.getElementById(`diningBusStat-${rest}`);
+        if (elBus) elBus.textContent = `搭車: ${busArrived}/${busMembers.length}`;
+      });
+
       const restCounts = {};
       list.forEach(i => {
         restCounts[i.restaurant] = (restCounts[i.restaurant] || 0) + 1;
@@ -972,20 +1495,58 @@
         }
 
         const dietDisplay = formatDietDisplay(item.diet);
-        const leaderBadge = item.isDiningLeader === '是'
-          ? `<div class="text-[11px] font-semibold text-rose-600 mt-0.5">（遊覽車 隊長）</div>`
+        
+        // 嚴格對照資料庫：在用餐隊長姓名旁邊加註紅底/紅字隊長標籤
+        const leaderBadgeHtml = item.isDiningLeader === '是'
+          ? `<span class="inline-block text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 ml-1.5">隊長</span>`
           : '';
+
+        // 人名入席打卡切換按鈕
+        const isPersonArrived = !!checkinStore.diningPerson[item.name];
+        const personBtnClass = isPersonArrived 
+          ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-xs' 
+          : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400';
+        const personIcon = isPersonArrived ? '<i class="fa-solid fa-check mr-1 text-emerald-200"></i>' : '';
+        const personText = isPersonArrived ? '已入席' : '未入席';
+
+        // 接駁車打卡 (非開車者)
+        let busCheckinHtml = `<span class="text-xs text-slate-400 font-normal">自駕</span>`;
+        if (trafficMethod === '遊覽車') {
+          const isBusArrived = !!checkinStore.diningBus[item.name];
+          const busBtnClass = isBusArrived 
+            ? 'bg-teal-600 text-white font-bold border-teal-600 shadow-xs' 
+            : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400';
+          const busIcon = isBusArrived ? '<i class="fa-solid fa-check mr-1 text-teal-200"></i>' : '';
+          const bText = isBusArrived ? '已接駁' : '未上車';
+          busCheckinHtml = `
+            <button onclick="toggleDiningCheckin('bus', '${escapeHtml(item.name)}')" class="px-2 py-0.5 text-xs rounded border transition-all flex items-center ${busBtnClass}">
+              ${busIcon}<span>${bText}</span>
+            </button>
+          `;
+        }
 
         return `
           <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
             <td class="py-3 px-3 text-center text-slate-400 align-middle">${idx + 1}</td>
             <td class="py-3 px-3 align-middle">${restCellHtml}</td>
             <td class="py-3 px-3 align-middle">
-              <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
-              ${leaderBadge}
+              <div class="flex items-center space-x-2">
+                <div class="flex items-center">
+                  <span class="font-bold text-slate-900">${escapeHtml(item.name)}</span>
+                  ${leaderBadgeHtml}
+                </div>
+                <button onclick="toggleDiningCheckin('person', '${escapeHtml(item.name)}')" class="px-2 py-0.5 text-xs rounded border transition-all flex items-center ${personBtnClass}">
+                  ${personIcon}<span>${personText}</span>
+                </button>
+              </div>
             </td>
             <td class="py-3 px-3 align-middle">${dietDisplay}</td>
-            <td class="py-3 px-3 font-medium text-slate-700 align-middle">${escapeHtml(trafficMethod)}</td>
+            <td class="py-3 px-3 align-middle">
+              <div class="flex items-center space-x-2">
+                <span class="font-medium text-slate-700 min-w-[3.2rem]">${escapeHtml(trafficMethod)}</span>
+                ${busCheckinHtml}
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
@@ -1020,20 +1581,29 @@
       return '<i class="fa-solid fa-utensils text-slate-500"></i>';
     }
 
-    /* --- [分頁5] 住宿安排（紅字聯絡人、排序：知達 ➔ 正巧4人 ➔ 正巧2人） --- */
+    /* --- [分頁5] 住宿安排（人名抵達點名） --- */
     function renderLodgingTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr class="text-sm">
           <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
           ${renderHeaderTh('住宿飯店', 'hotel', 'w-32')}
           ${renderHeaderTh('房型', 'roomType', 'w-28')}
-          ${renderHeaderTh('姓名', 'name', 'w-36')}
+          ${renderHeaderTh('姓名（抵達點名）', 'name', 'w-44')}
           ${renderHeaderTh('同房室友', 'roommates', '')}
         </tr>
       `;
 
       let list = getProcessedDirectoryList().filter(i => i.name !== '彭偉峰');
       countBadge.textContent = `共 ${list.length} 位住宿人員`;
+
+      // 更新雙會館即時抵達人數
+      const hotels = ['知達', '正巧'];
+      hotels.forEach(h => {
+        const members = rawDirectoryData.filter(i => i.hotel === h && i.name !== '彭偉峰');
+        const arrived = members.filter(i => checkinStore.lodgingPerson[i.name]).length;
+        const el = document.getElementById(`lodgingStat-${h}`);
+        if (el) el.textContent = `抵達：${arrived} / ${members.length} 位`;
+      });
 
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的住宿資料</td></tr>`;
@@ -1046,18 +1616,20 @@
           ? '<i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>'
           : '<i class="fa-solid fa-landmark text-sky-600 mr-1.5"></i>';
 
-        let nameCellHtml = `<div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>`;
+        let nameSubHtml = '';
         if (item.name === '杜志峰') {
-          nameCellHtml = `
-            <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
-            <div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（知達 聯絡人）</div>
-          `;
+          nameSubHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（知達 聯絡人）</div>`;
         } else if (item.name === '吳緁苓') {
-          nameCellHtml = `
-            <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
-            <div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（正巧 聯絡人）</div>
-          `;
+          nameSubHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（正巧 聯絡人）</div>`;
         }
+
+        // 人名抵達打卡按鈕
+        const isArrived = !!checkinStore.lodgingPerson[item.name];
+        const arriveBtnClass = isArrived 
+          ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-xs' 
+          : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400';
+        const arriveIcon = isArrived ? '<i class="fa-solid fa-check mr-1 text-emerald-200"></i>' : '';
+        const arriveText = isArrived ? '已抵達' : '未抵達';
 
         return `
           <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
@@ -1067,7 +1639,17 @@
               <span>${escapeHtml(item.hotel)}</span>
             </td>
             <td class="py-3 px-3 font-semibold text-slate-700 align-middle">${escapeHtml(item.roomType)}</td>
-            <td class="py-3 px-3 align-middle">${nameCellHtml}</td>
+            <td class="py-3 px-3 align-middle">
+              <div class="flex items-center space-x-2">
+                <div>
+                  <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
+                  ${nameSubHtml}
+                </div>
+                <button onclick="toggleLodgingCheckin('${escapeHtml(item.name)}')" class="px-2 py-0.5 text-xs rounded border transition-all flex items-center ${arriveBtnClass}">
+                  ${arriveIcon}<span>${arriveText}</span>
+                </button>
+              </div>
+            </td>
             <td class="py-3 px-3 align-middle">${renderRoommateChips(item.roommates)}</td>
           </tr>
         `;
@@ -1104,7 +1686,7 @@
     }
 
     /* =========================================================
-       6. 排序與表頭過濾邏輯
+       8. 排序與表頭過濾邏輯
        ========================================================= */
     function renderHeaderTh(colTitle, colKey, widthClass) {
       const hasFilter = columnFilters[colKey] && columnFilters[colKey].size > 0;
@@ -1184,7 +1766,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'dining') {
-          // 嚴格排序：1. 用餐餐廳 ➔ 2. 隊長置頂 ➔ 3. 交通方式 (遊覽車 > 開車/自駕) ➔ 4. 姓名筆畫
           list.sort((a, b) => {
             if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
             if (a.isDiningLeader === '是' && b.isDiningLeader !== '是') return -1;
@@ -1202,7 +1783,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'lodging') {
-          // 嚴格排序：1. 知達 ➔ 2. 正巧-4人房 ➔ 3. 正巧-2人房 ➔ 其餘
           const getLodgingRank = (item) => {
             if (item.hotel.includes('知達')) return 1;
             if (item.hotel.includes('正巧') && item.roomType.includes('4人')) return 2;
@@ -1305,20 +1885,26 @@
       renderCurrentTab();
     }
 
-    /* --- 活動流程編輯 (密碼：1223) --- */
+    /* =========================================================
+       9. 活動流程編輯
+       ========================================================= */
     function handleScheduleEditToggle() {
       if (!isScheduleEditing) {
         requestPasswordAuth(() => {
           isScheduleEditing = true;
           document.getElementById('editBtnText').textContent = '完成並鎖定';
+          document.getElementById('editBtnIcon').className = 'fa-solid fa-check text-emerald-600';
           document.getElementById('addScheduleRowBtn').classList.remove('hidden');
           renderCurrentTab();
+          showToast('已進入活動流程編輯模式', 'success');
         });
       } else {
         isScheduleEditing = false;
         document.getElementById('editBtnText').textContent = '編輯流程';
+        document.getElementById('editBtnIcon').className = 'fa-solid fa-pen-to-square text-slate-500';
         document.getElementById('addScheduleRowBtn').classList.add('hidden');
         renderCurrentTab();
+        showToast('活動流程已鎖定儲存', 'success');
       }
     }
 
@@ -1342,39 +1928,53 @@
         note: "- 項目說明\n-- 備註事項"
       });
       renderCurrentTab();
+      showToast('已新增一筆流程', 'success');
     }
 
     function deleteScheduleRow(id) {
-      if (confirm('確定要刪除此筆流程項目嗎？')) {
-        scheduleData = scheduleData.filter(i => i.id !== id);
-        renderCurrentTab();
-      }
+      scheduleData = scheduleData.filter(i => i.id !== id);
+      renderCurrentTab();
+      showToast('已刪除該筆流程', 'success');
     }
 
-    /* --- 密碼驗證與 PDF 匯出 (密碼：1223) --- */
+    /* =========================================================
+       10. 密碼驗證核心 (密碼：1223)
+       ========================================================= */
     function requestPasswordAuth(onSuccess) {
       pendingPasswordCallback = onSuccess;
       const modal = document.getElementById('passwordModal');
       const input = document.getElementById('passwordInput');
+      const err = document.getElementById('passwordErrorMsg');
+      
       input.value = '';
+      err.classList.add('hidden');
       modal.classList.remove('hidden');
-      input.focus();
-
-      document.getElementById('passwordConfirmBtn').onclick = () => {
-        if (input.value === '1223') {
-          closePasswordModal();
-          if (pendingPasswordCallback) pendingPasswordCallback();
-        } else {
-          alert('密碼錯誤！請重新輸入。');
-          input.value = '';
-          input.focus();
-        }
-      };
+      setTimeout(() => input.focus(), 50);
     }
 
     function closePasswordModal() {
       document.getElementById('passwordModal').classList.add('hidden');
-      pendingPasswordCallback = null;
+      document.getElementById('passwordErrorMsg').classList.add('hidden');
+    }
+
+    function submitPasswordCheck() {
+      const input = document.getElementById('passwordInput');
+      const val = input.value.trim();
+
+      if (val === '1223') {
+        const cb = pendingPasswordCallback;
+        pendingPasswordCallback = null;
+        closePasswordModal();
+
+        if (typeof cb === 'function') {
+          cb();
+        }
+      } else {
+        const err = document.getElementById('passwordErrorMsg');
+        err.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+      }
     }
 
     function promptExportPDF() {
@@ -1384,17 +1984,58 @@
     }
 
     function executePDFExport() {
+      showToast('正在產生 PDF，請稍候...', 'info');
+
+      const container = document.getElementById('tableScrollContainer');
+      const origMaxH = container.style.maxHeight;
+      const origOverflow = container.style.overflow;
+
+      container.style.maxHeight = 'none';
+      container.style.overflow = 'visible';
+
       const element = document.getElementById('printableContent');
       const opt = {
-        margin: [8, 8, 8, 8],
+        margin: [6, 6, 6, 6],
         filename: `重啟人生-翻轉實驗室_${currentTab}_${document.getElementById('updateTimestamp').textContent}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }
       };
 
-      html2pdf().set(opt).from(element).save();
+      html2pdf().set(opt).from(element).save().then(() => {
+        container.style.maxHeight = origMaxH;
+        container.style.overflow = origOverflow;
+        showToast('PDF 匯出下載成功！', 'success');
+      }).catch(e => {
+        container.style.maxHeight = origMaxH;
+        container.style.overflow = origOverflow;
+        console.error('PDF Export Error:', e);
+        showToast('PDF 匯出失敗，請重試', 'error');
+      });
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = msg;
+      if (type === 'error') {
+        toast.className = 'fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-rose-600 transition-all';
+        toastIcon.className = 'fa-solid fa-triangle-exclamation text-white';
+      } else if (type === 'success') {
+        toast.className = 'fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-emerald-600 transition-all';
+        toastIcon.className = 'fa-solid fa-circle-check text-white';
+      } else {
+        toast.className = 'fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-slate-900 transition-all';
+        toastIcon.className = 'fa-solid fa-circle-info text-sky-400';
+      }
+
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2600);
     }
 
     function escapeHtml(str) {

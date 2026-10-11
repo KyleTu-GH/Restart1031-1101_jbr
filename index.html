@@ -327,7 +327,7 @@
             <div>
               <div class="font-bold text-slate-900 text-sm flex items-center">
                 <i class="fa-solid fa-hotel text-sky-600 mr-1.5"></i>知達工藝會館
-                <span class="ml-2 text-xs font-semibold text-rose-600">聯絡人：杜志峰</span>
+                <span class="ml-2 text-xs font-semibold text-rose-600">聯絡人：杜志峰、吳淋禎</span>
               </div>
               <div class="text-slate-600 mt-1">TEL：<a href="tel:0492306969" class="font-semibold text-sky-800 hover:underline">049-2306969</a></div>
               <div class="text-sky-800 font-semibold mt-1">抵達進度：<span id="lodgingStat_知達">0/41 位</span></div>
@@ -467,15 +467,13 @@
     /* =========================================================
        1. 狀態與名冊資料（雙試算表資料來源串接）
        ========================================================= */
-    // 總表、交通安排、餐飲安排、住宿安排 資料庫來源
     const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1IG9gdIuvad5sj0RWC8hzvIvdBYSQo4j0ERf910AV24U/export?format=csv&gid=943908442';
-    // 活動流程 資料庫來源
     const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv&gid=491680836';
 
     let currentTab = 'schedule';
     let searchQuery = '';
     let isScheduleEditing = false;
-    let isCheckinMode = false; // 是否進入可打卡點名模式 (預設防誤觸只讀)
+    let isCheckinMode = false;
     let pendingPasswordCallback = null;
 
     let activeFilterColumn = null;
@@ -492,16 +490,23 @@
       lodgingPerson: {}
     };
 
-    // 餐飲安排專屬幹部職務標記（車長與領談員）
+    // 最新餐飲安排專屬幹部職務標記（車長與領談員）
     const diningRoleMap = {
       "李筱瑋": "弎食車長",
       "胡靖韋": "植田車長",
       "莫惠萍": "湫禾車長",
-      "吳曉宣": "麵五三車長",
+      "杜志峰": "麵五三車長/領談員",
       "林珊汝": "弎食領談員",
       "范永銀": "植田領談員",
-      "杜志峰": "麵五三領談員",
-      "梁懷貞": "湫禾領談員"
+      "梁懷貞": "湫禾領談員",
+      "洪淑姮": "湫禾領談員"
+    };
+
+    // 最新住宿聯絡人清單（知達：杜志峰、吳淋禎；正巧：吳緁苓）
+    const lodgingContactMap = {
+      "杜志峰": "知達",
+      "吳淋禎": "知達",
+      "吳緁苓": "正巧"
     };
 
     // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫
@@ -527,7 +532,7 @@
       { id: 19, date: "備註說明", startTime: "", endTime: "", duration: "", location: "", activity: "遊覽車接駁安排（培芯車長）", note: "遊覽車36人（培芯車長）\n10/31\n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 09:30 知達送到正巧\n- 13:30 正巧出發到台中高鐵" }
     ];
 
-    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）
+    // 實體「成員資料」最新 62 位真實人員數據
     let rawDirectoryData = [
       { team: "白", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯-妻, 林政緯-看護" },
       { team: "白", name: "林政緯-妻", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-看護" },
@@ -682,17 +687,6 @@
                   const defaultItem = rawDirectoryData.find(x => x.name === name);
                   if (!rest && defaultItem) rest = defaultItem.restaurant;
 
-                  // 讀取「餐廳_交通-車長」與「餐廳_用餐-領談員」欄位
-                  const busLeaderVal = getField(['餐廳_交通-車長', '餐廳交通-車長', '交通-車長', '交通_車長']);
-                  const talkLeaderVal = getField(['餐廳_用餐-領談員', '餐廳用餐-領談員', '用餐-領談員', '用餐_領談員', '領談員']);
-                  
-                  let dynamicRole = '';
-                  if (busLeaderVal && (busLeaderVal.includes('車長') || busLeaderVal === '是')) {
-                    dynamicRole = rest ? `${rest.substring(0, 2)}車長` : '車長';
-                  } else if (talkLeaderVal && (talkLeaderVal.includes('領談員') || talkLeaderVal === '是')) {
-                    dynamicRole = rest ? `${rest.substring(0, 2)}領談員` : '領談員';
-                  }
-
                   return {
                     team: getField(['隊別', '組別']),
                     name: name,
@@ -701,7 +695,6 @@
                     isTrafficLeader: (getField(['交通-去程_隊長', '交通_隊長']) === '隊長') ? '是' : (defaultItem ? defaultItem.isTrafficLeader : '否'),
                     restaurant: rest,
                     isDiningLeader: (getField(['餐廳_隊長', '用餐_隊長']).includes('隊長')) ? '是' : (defaultItem ? defaultItem.isDiningLeader : '否'),
-                    diningRole: dynamicRole,
                     diet: getField(['飲食注意事項', '飲食']) || (defaultItem ? defaultItem.diet : '無'),
                     hotel: getField(['住宿', '飯店']) || (defaultItem ? defaultItem.hotel : ''),
                     roomType: getField(['房型']) || (defaultItem ? defaultItem.roomType : ''),
@@ -1113,7 +1106,7 @@
       return 'bg-white hover:bg-slate-50';
     }
 
-    /* --- [分頁3] 交通安排（去程與回程打卡點名） --- */
+    /* --- [分頁3] 交通安排 --- */
     function renderTrafficTab(thead, tbody, countBadge) {
       let busOutTotal = 0;
       let busOutArrived = 0;
@@ -1131,7 +1124,6 @@
         }
       });
 
-      // 更新快捷列標籤
       const badgeOut = document.getElementById('trafficOutSummaryBadge');
       if (badgeOut) badgeOut.textContent = `${busOutArrived}/${busOutTotal}`;
       const badgeBack = document.getElementById('trafficBackSummaryBadge');
@@ -1178,7 +1170,6 @@
         const bgClass = getTrafficBackBgClass(item.trafficBack);
         const leaderBadge = getTrafficLeaderBadge(item);
 
-        // 去程打卡鈕
         let outBtnHtml = '';
         if (item.trafficOut === '遊覽車') {
           const isArrived = !!checkinStore.trafficOut[item.name];
@@ -1197,7 +1188,6 @@
           outBtnHtml = `<span class="font-semibold text-slate-500">${escapeHtml(item.trafficOut)}</span>`;
         }
 
-        // 回程打卡鈕
         let backBtnHtml = '';
         if (item.trafficBack === '遊覽車') {
           const isArrived = !!checkinStore.trafficBack[item.name];
@@ -1245,12 +1235,11 @@
       return '';
     }
 
-    /* --- [分頁4] 餐飲安排（人名入席點名、遊覽車接駁點名、幹部標籤） --- */
+    /* --- [分頁4] 餐飲安排 --- */
     function renderDiningTab(thead, tbody, countBadge) {
       let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
       countBadge.textContent = `共 ${list.length} 位用餐人員`;
 
-      // 統計各餐廳用餐入席人數
       const restPersonTotals = {};
       const restPersonArrived = {};
       const restBusTotals = {};
@@ -1272,7 +1261,6 @@
         }
       });
 
-      // 更新頂部四餐廳卡片統計數字
       const updateCardStat = (key, restName) => {
         const el = document.getElementById(`diningStat_${key}`);
         if (el) {
@@ -1286,7 +1274,6 @@
       updateCardStat('湫禾', '湫禾壽喜燒');
       updateCardStat('麵五三', '麵五三屋台');
 
-      // 全體入席與接駁統計
       const totalDiningPersons = list.length;
       const totalDiningArrived = Object.values(restPersonArrived).reduce((a, b) => a + b, 0);
       const totalBusPersons = Object.values(restBusTotals).reduce((a, b) => a + b, 0);
@@ -1333,7 +1320,6 @@
         const bgClass = getRestaurantBgClass(item.restaurant);
         const icon = getRestaurantIcon(item.restaurant);
 
-        // 餐廳分組名稱與人數
         let restCellHtml = '';
         if (!displayedFirstInGroup.has(item.restaurant)) {
           displayedFirstInGroup.add(item.restaurant);
@@ -1360,19 +1346,17 @@
 
         const dietDisplay = formatDietDisplay(item.diet);
         
-        // 幹部專屬職稱標記（車長與領談員）
-        const role = item.diningRole || diningRoleMap[item.name] || (item.isDiningLeader === '是' ? '隊長' : '');
+        // 最新幹部職稱標記（車長與領談員）
+        const role = diningRoleMap[item.name] || '';
         const leaderBadgeHtml = role
           ? `<span class="inline-block text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 ml-1.5">（${role}）</span>`
           : '';
 
-        // 入席點名按鈕
         const isPersonArrived = !!checkinStore.diningPerson[item.name];
         const personBtnClass = isPersonArrived 
           ? 'bg-emerald-600 text-white font-semibold shadow-xs' 
           : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
 
-        // 接駁點名按鈕
         const isBus = (item.trafficOut === '遊覽車' || item.trafficOut === '自處' || item.trafficOut === '自行');
         let busCellHtml = '';
         if (isBus) {
@@ -1443,12 +1427,11 @@
       return '<i class="fa-solid fa-utensils text-slate-500"></i>';
     }
 
-    /* --- [分頁5] 住宿安排（人名抵達打卡點名、同房到齊提示） --- */
+    /* --- [分頁5] 住宿安排 --- */
     function renderLodgingTab(thead, tbody, countBadge) {
       let list = getProcessedDirectoryList().filter(i => i.name !== '彭偉峰');
       countBadge.textContent = `共 ${list.length} 位住宿人員`;
 
-      // 統計會館抵達人數
       let zidaTotal = 0;
       let zidaArrived = 0;
       let zhengTotal = 0;
@@ -1500,21 +1483,18 @@
           ? '<i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>'
           : '<i class="fa-solid fa-landmark text-sky-600 mr-1.5"></i>';
 
-        // 聯絡人換行紅字
+        // 聯絡人換行紅字標籤（知達：杜志峰、吳淋禎；正巧：吳緁苓）
         let contactBadgeHtml = '';
-        if (item.name === '杜志峰') {
-          contactBadgeHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（知達 聯絡人）</div>`;
-        } else if (item.name === '吳緁苓') {
-          contactBadgeHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（正巧 聯絡人）</div>`;
+        if (lodgingContactMap[item.name]) {
+          const hotelTag = lodgingContactMap[item.name];
+          contactBadgeHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（${hotelTag} 聯絡人）</div>`;
         }
 
-        // 抵達打卡鈕
         const isArrived = !!checkinStore.lodgingPerson[item.name];
         const arriveBtnClass = isArrived
           ? 'bg-emerald-600 text-white font-semibold shadow-xs'
           : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
 
-        // 同房全員到齊檢查
         let roomAllArrived = false;
         if (item.roomGroup && item.roomGroup !== '無-無_無') {
           const roomMates = list.filter(x => x.roomGroup === item.roomGroup);
@@ -1660,16 +1640,15 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'dining') {
-          // 嚴格排序：1. 用餐餐廳 ➔ 2. 幹部層級 (車長優先，領談員次之) ➔ 3. 交通方式 (遊覽車 > 開車) ➔ 4. 姓名筆畫
+          // 嚴格排序：1. 用餐餐廳 ➔ 2. 幹部層級 (車長置頂 > 領談員次之) ➔ 3. 交通方式 (遊覽車 > 開車) ➔ 4. 姓名筆畫
           list.sort((a, b) => {
             if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
 
             const getRolePriority = (item) => {
-              const r = item.diningRole || diningRoleMap[item.name] || '';
+              const r = diningRoleMap[item.name] || '';
               if (r.includes('車長')) return 1;
-              if (r.includes('領談員') || r.includes('輔導員')) return 2;
-              if (r) return 3;
-              return 4;
+              if (r.includes('領談員')) return 2;
+              return 3;
             };
 
             const roleRankA = getRolePriority(a);
@@ -1688,7 +1667,10 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'lodging') {
-          // 嚴格排序：1. 知達 ➔ 2. 正巧-4人房 ➔ 3. 正巧-2人房 ➔ 其餘
+          // 嚴格排序：
+          // 1. 住宿地點：知達 ➔ 正巧-4人房 ➔ 正巧-2人房
+          // 2. 聯絡人置頂於該住宿地點名單最前方！
+          // 3. 同房房號分組 ➔ 4. 姓名筆畫
           const getLodgingRank = (item) => {
             if (item.hotel.includes('知達')) return 1;
             if (item.hotel.includes('正巧') && item.roomType.includes('4人')) return 2;
@@ -1697,9 +1679,24 @@
           };
 
           list.sort((a, b) => {
+            const hA = a.hotel.includes('知達') ? '知達' : '正巧';
+            const hB = b.hotel.includes('知達') ? '知達' : '正巧';
+
+            // 先分飯店地點
+            if (hA !== hB) {
+              return hA === '知達' ? -1 : 1;
+            }
+
+            // 在同一飯店內，聯絡人優先置頂！
+            const isContactA = lodgingContactMap[a.name] === hA ? 1 : 2;
+            const isContactB = lodgingContactMap[b.name] === hB ? 1 : 2;
+            if (isContactA !== isContactB) return isContactA - isContactB;
+
+            // 房型順序（4人房 > 2人房）
             const rankA = getLodgingRank(a);
             const rankB = getLodgingRank(b);
             if (rankA !== rankB) return rankA - rankB;
+
             if (a.roomGroup !== b.roomGroup) return strokeSort(a.roomGroup, b.roomGroup);
             return strokeSort(a.name, b.name);
           });
@@ -1922,7 +1919,6 @@
       smartCopyToClipboard(text, `${hotelFull} 未抵達名單`);
     }
 
-    // 兼具 Clipboard API 與行動裝置彈窗的保證複製引擎
     function smartCopyToClipboard(text, title) {
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {

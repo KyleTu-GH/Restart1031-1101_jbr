@@ -459,9 +459,11 @@
 
   <script>
     /* =========================================================
-       1. 狀態與名冊資料（嚴格對齊資料庫真實資料）
+       1. 狀態與名冊資料（雙試算表資料來源串接）
        ========================================================= */
-    const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv';
+    // 總表、交通安排、餐飲安排、住宿安排 資料庫來源
+    const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1IG9gdIuvad5sj0RWC8hzvIvdBYSQo4j0ERf910AV24U/export?format=csv&gid=943908442';
+    // 活動流程 資料庫來源
     const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv&gid=491680836';
 
     let currentTab = 'schedule';
@@ -644,16 +646,16 @@
       
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-        const res = await fetch(`${GOOGLE_SHEET_DIR_URL}&_t=${Date.now()}`, {
+        // 1. 同步成員名冊（總表、交通、餐飲、住宿）
+        const resDir = await fetch(`${GOOGLE_SHEET_DIR_URL}&_t=${Date.now()}`, {
           signal: controller.signal,
           cache: 'no-store'
         });
-        clearTimeout(timeoutId);
 
-        if (res.ok) {
-          const csvText = await res.text();
+        if (resDir.ok) {
+          const csvText = await resDir.text();
           Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
@@ -662,7 +664,7 @@
                 const parsed = results.data.map(r => {
                   const getField = (keys) => {
                     for (const k of keys) {
-                      if (r[k] !== undefined) return String(r[k]).trim();
+                      if (r[k] !== undefined && String(r[k]).trim() !== '') return String(r[k]).trim();
                     }
                     return '';
                   };
@@ -671,7 +673,6 @@
                   let rest = getField(['餐廳', '用餐餐廳', '餐廳名稱']);
                   if (name === '吳佩容') rest = 'NO';
 
-                  // 保留預設餐廳（若抓取為空則保護不被覆蓋）
                   const defaultItem = rawDirectoryData.find(x => x.name === name);
                   if (!rest && defaultItem) rest = defaultItem.restaurant;
 
@@ -694,6 +695,54 @@
                 if (parsed.length > 0) {
                   rawDirectoryData = parsed;
                   calculateDirectoryRoommates();
+                }
+              }
+            }
+          });
+        }
+
+        // 2. 同步活動流程
+        const resSched = await fetch(`${GOOGLE_SHEET_SCHEDULE_URL}&_t=${Date.now()}`, {
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
+
+        if (resSched.ok) {
+          const csvTextSched = await resSched.text();
+          Papa.parse(csvTextSched, {
+            header: false,
+            skipEmptyLines: true,
+            complete: (results) => {
+              if (results.data && results.data.length > 1) {
+                const rows = results.data;
+                let headerIdx = 0;
+                for (let i = 0; i < Math.min(rows.length, 5); i++) {
+                  const rowStr = rows[i].join('');
+                  if (rowStr.includes('日期') || rowStr.includes('活動')) {
+                    headerIdx = i;
+                    break;
+                  }
+                }
+
+                const parsedSched = [];
+                for (let i = headerIdx + 1; i < rows.length; i++) {
+                  const r = rows[i];
+                  if (!r || r.length < 5) continue;
+                  if (r[0] === '日期' || r[1] === '起時' || r[4] === '活動') continue;
+                  parsedSched.push({
+                    id: parsedSched.length + 1,
+                    date: (r[0] || '').trim(),
+                    startTime: (r[1] || '').trim(),
+                    endTime: (r[2] || '').trim(),
+                    duration: (r[3] || '').trim(),
+                    location: (r[5] || r[4] || '').trim(),
+                    activity: (r[4] || r[5] || '').trim(),
+                    note: (r[6] || '').trim()
+                  });
+                }
+                if (parsedSched.length > 0) {
+                  scheduleData = parsedSched;
                 }
               }
             }

@@ -202,6 +202,24 @@
       </div>
     </div>
 
+    <!-- 總表專屬快捷回報橫條（僅在總表分頁顯示） -->
+    <div id="overviewQuickBar" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs no-print">
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-1.5 font-bold text-slate-800">
+          <i class="fa-solid fa-clipboard-check text-emerald-600 text-sm"></i>
+          <span>10/31 活動報到進度</span>
+        </div>
+        <div class="text-slate-600 font-medium">
+          報到人數：<span id="overviewSummaryBadge" class="font-bold text-emerald-700">0/62</span> 位
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="copyOverviewUnarrived()" class="px-3 py-1 bg-white text-emerald-800 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition shadow-xs flex items-center space-x-1 font-semibold">
+          <i class="fa-solid fa-copy"></i><span>複製未報到名單至 LINE</span>
+        </button>
+      </div>
+    </div>
+
     <!-- 交通安排專屬快捷回報橫條（僅在交通安排分頁顯示） -->
     <div id="trafficQuickBar" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs no-print">
       <div class="flex items-center space-x-4">
@@ -481,8 +499,9 @@
     let activeSortDirection = null;
     let columnFilters = {};
 
-    // 簽到報到本機儲存 (localStorage 秒存秒開)
+    // 簽到報到本機儲存 (localStorage 秒存秒開，新增 overviewCheckin 支援 10/31 總表大會報到)
     let checkinStore = {
+      overviewCheckin: {},
       trafficOut: {},
       trafficBack: {},
       diningPerson: {},
@@ -626,7 +645,15 @@
       try {
         const stored = localStorage.getItem('restart_checkin_store_v1');
         if (stored) {
-          checkinStore = JSON.parse(stored);
+          const parsed = JSON.parse(stored);
+          checkinStore = {
+            overviewCheckin: parsed.overviewCheckin || {},
+            trafficOut: parsed.trafficOut || {},
+            trafficBack: parsed.trafficBack || {},
+            diningPerson: parsed.diningPerson || {},
+            diningBus: parsed.diningBus || {},
+            lodgingPerson: parsed.lodgingPerson || {}
+          };
         }
       } catch (e) {
         console.warn('讀取簽到儲存失敗，使用預設值', e);
@@ -829,7 +856,11 @@
       };
       searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
 
-      // 導覽資訊卡控制
+      // 導覽資訊卡與回報橫條控制
+      const overviewQuickBar = document.getElementById('overviewQuickBar');
+      if (tabKey === 'overview') overviewQuickBar.classList.remove('hidden');
+      else overviewQuickBar.classList.add('hidden');
+
       const trafficQuickBar = document.getElementById('trafficQuickBar');
       if (tabKey === 'traffic') trafficQuickBar.classList.remove('hidden');
       else trafficQuickBar.classList.add('hidden');
@@ -884,6 +915,7 @@
         showToast('請先點擊右上角「開啟點名模式」解鎖打卡操作！', 'error');
         return;
       }
+      if (!checkinStore[type]) checkinStore[type] = {};
       checkinStore[type][key] = !checkinStore[type][key];
       saveCheckinToStorage();
       renderCurrentTab();
@@ -908,8 +940,9 @@
 
     function promptResetCheckin() {
       requestPasswordAuth(() => {
-        if (confirm('確定要清空所有交通、餐飲、住宿的簽到打卡紀錄嗎？（此動作無法還原）')) {
+        if (confirm('確定要清空所有總表、交通、餐飲、住宿的簽到打卡紀錄嗎？（此動作無法還原）')) {
           checkinStore = {
+            overviewCheckin: {},
             trafficOut: {},
             trafficBack: {},
             diningPerson: {},
@@ -1057,13 +1090,32 @@
       }).join('');
     }
 
-    /* --- [分頁2] 總表 --- */
+    /* --- [分頁2] 總表（新增「報到」打卡欄位，比照交通安排簽到模式） --- */
     function renderOverviewTab(thead, tbody, countBadge) {
+      let totalCount = rawDirectoryData.length;
+      let arrivedCount = 0;
+      rawDirectoryData.forEach(item => {
+        if (checkinStore.overviewCheckin && checkinStore.overviewCheckin[item.name]) {
+          arrivedCount++;
+        }
+      });
+
+      const badge = document.getElementById('overviewSummaryBadge');
+      if (badge) badge.textContent = `${arrivedCount}/${totalCount}`;
+
       thead.innerHTML = `
         <tr class="text-sm">
           <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
-          ${renderHeaderTh('姓名', 'name', 'w-28')}
           ${renderHeaderTh('隊別', 'team', 'w-24')}
+          <th class="py-2.5 px-3 font-semibold w-28 text-center">
+            <div class="flex items-center justify-between">
+              <div>
+                <span>報到</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">已報到：${arrivedCount}/${totalCount}</span>
+              </div>
+            </div>
+          </th>
+          ${renderHeaderTh('姓名', 'name', 'w-28')}
           ${renderHeaderTh('交通-去/回', 'trafficCombo', 'w-36')}
           ${renderHeaderTh('用餐餐廳', 'restaurant', 'w-32')}
           ${renderHeaderTh('住宿飯店-房型', 'lodgingCombo', 'w-36')}
@@ -1075,7 +1127,7 @@
       countBadge.textContent = `共 ${list.length} 位人員`;
 
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400 text-sm">無符合的人員資料</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">無符合的人員資料</td></tr>`;
         return;
       }
 
@@ -1084,15 +1136,27 @@
         const trafficCombo = `${item.trafficOut || '無'}/${item.trafficBack || '無'}`;
         const lodgingCombo = `${item.hotel}-${item.roomType}`;
 
+        const isCheckedIn = !!(checkinStore.overviewCheckin && checkinStore.overviewCheckin[item.name]);
+        const btnClass = isCheckedIn
+          ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+          : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+
+        const checkinBtnHtml = `
+          <button onclick="toggleCheckinItem('overviewCheckin', '${escapeHtml(item.name)}')" class="px-2.5 py-1 rounded text-xs transition ${btnClass}">
+            ${isCheckedIn ? '✔ 已報到' : '未報到'}
+          </button>
+        `;
+
         return `
           <tr class="text-sm border-b border-slate-200 transition-colors ${teamBg}">
-            <td class="py-3 px-3 text-center text-slate-400">${idx + 1}</td>
-            <td class="py-3 px-3 font-bold text-slate-900">${escapeHtml(item.name)}</td>
-            <td class="py-3 px-3 font-semibold text-slate-700">${escapeHtml(item.team)}</td>
-            <td class="py-3 px-3 text-slate-700">${escapeHtml(trafficCombo)}</td>
-            <td class="py-3 px-3 font-medium text-slate-800">${escapeHtml(item.restaurant)}</td>
-            <td class="py-3 px-3 text-slate-700">${escapeHtml(lodgingCombo)}</td>
-            <td class="py-3 px-3">${renderRoommateChips(item.roommates)}</td>
+            <td class="py-3 px-3 text-center text-slate-400 align-middle">${idx + 1}</td>
+            <td class="py-3 px-3 font-semibold text-slate-700 align-middle">${escapeHtml(item.team)}</td>
+            <td class="py-3 px-3 text-center align-middle">${checkinBtnHtml}</td>
+            <td class="py-3 px-3 font-bold text-slate-900 align-middle">${escapeHtml(item.name)}</td>
+            <td class="py-3 px-3 text-slate-700 align-middle">${escapeHtml(trafficCombo)}</td>
+            <td class="py-3 px-3 font-medium text-slate-800 align-middle">${escapeHtml(item.restaurant)}</td>
+            <td class="py-3 px-3 text-slate-700 align-middle">${escapeHtml(lodgingCombo)}</td>
+            <td class="py-3 px-3 align-middle">${renderRoommateChips(item.roommates)}</td>
           </tr>
         `;
       }).join('');
@@ -1615,16 +1679,50 @@
         });
       } else {
         if (currentTab === 'overview') {
+          // 【總表排序規則】
+          // 1. 隊別：白 → 紅 → 綠 → 接班人
+          // 2. 姓名：依中文筆畫由少至多排序
+          // 3. 交通去/回：遊覽車/遊覽車 → 自行/遊覽車 → 開車/開車 → 其他
+          // 4. 住宿安排：知達 → 正巧4人房 → 正巧2人房 → 其他
           const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
+
+          const getTrafficComboRank = (item) => {
+            const out = (item.trafficOut || '').trim();
+            const back = (item.trafficBack || '').trim();
+            if (out === '遊覽車' && back === '遊覽車') return 1;
+            if ((out === '自行' || out === '自處') && back === '遊覽車') return 2;
+            if (out === '開車' && back === '開車') return 3;
+            return 4;
+          };
+
+          const getLodgingRank = (item) => {
+            const h = (item.hotel || '').trim();
+            const r = (item.roomType || '').trim();
+            if (h.includes('知達')) return 1;
+            if (h.includes('正巧') && r.includes('4人')) return 2;
+            if (h.includes('正巧') && r.includes('2人')) return 3;
+            return 4;
+          };
+
           list.sort((a, b) => {
+            // 1. 隊別
             const tA = teamOrder[a.team] || 99;
             const tB = teamOrder[b.team] || 99;
             if (tA !== tB) return tA - tB;
-            if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
-            const comboA = `${a.hotel}-${a.roomType}`;
-            const comboB = `${b.hotel}-${b.roomType}`;
-            if (comboA !== comboB) return strokeSort(comboA, comboB);
-            return strokeSort(a.name, b.name);
+
+            // 2. 姓名（依中文筆畫由少至多排序）
+            const nRes = strokeSort(a.name, b.name);
+            if (nRes !== 0) return nRes;
+
+            // 3. 交通去/回
+            const tcA = getTrafficComboRank(a);
+            const tcB = getTrafficComboRank(b);
+            if (tcA !== tcB) return tcA - tcB;
+
+            // 4. 住宿安排
+            const lA = getLodgingRank(a);
+            const lB = getLodgingRank(b);
+            return lA - lB;
           });
         } else if (currentTab === 'traffic') {
           list.sort((a, b) => {
@@ -1850,6 +1948,24 @@
       const h = String(d.getHours()).padStart(2, '0');
       const min = String(d.getMinutes()).padStart(2, '0');
       return `${m}/${date} ${h}:${min}`;
+    }
+
+    function copyOverviewUnarrived() {
+      const unarrived = rawDirectoryData
+        .filter(i => !(checkinStore.overviewCheckin && checkinStore.overviewCheckin[i.name]))
+        .map(i => `${i.name}（${i.team}隊）`);
+
+      let text = `【10/31 重啟人生翻轉實驗室 未報到名單（共 ${unarrived.length}/${rawDirectoryData.length} 位）】\n`;
+      if (unarrived.length === 0) {
+        text += `✔ 全員已順利完成報到！\n`;
+      } else {
+        unarrived.forEach((item, idx) => {
+          text += `${idx + 1}. ${item}\n`;
+        });
+      }
+      text += `回報時間：${formatTimeNow()}`;
+
+      smartCopyToClipboard(text, `總表未報到名單`);
     }
 
     function copyTrafficUnarrived(direction) {

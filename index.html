@@ -250,7 +250,6 @@
             <div class="text-slate-600 mt-1">
               TEL：<a href="tel:0981930305" class="font-semibold text-rose-800 hover:underline">0981-930305</a>
             </div>
-            <!-- 即時進度顯示：入席與接駁車 -->
             <div class="mt-1.5 flex flex-wrap gap-1 font-mono text-[10px]">
               <span id="diningStat-弎食鉄板" class="bg-white px-1.5 py-0.5 rounded border border-rose-200 text-rose-800">入席: 0/0</span>
               <span id="diningBusStat-弎食鉄板" class="bg-white px-1.5 py-0.5 rounded border border-teal-200 text-teal-800">搭車: 0/0</span>
@@ -454,7 +453,7 @@
     </div>
   </div>
 
-  <!-- 密碼輸入通用彈窗 (支援 Enter 鍵送出與無阻擋紅字提示) -->
+  <!-- 密碼輸入通用彈窗 -->
   <div id="passwordModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5 border border-slate-200">
       <div class="flex items-center space-x-2 text-slate-900 font-bold text-base mb-1">
@@ -473,7 +472,7 @@
     </div>
   </div>
 
-  <!-- 備用複製彈窗（當瀏覽器 Clipboard API 受限時自動彈出供一鍵複製） -->
+  <!-- 備用複製彈窗 -->
   <div id="copyModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-slate-200 flex flex-col">
       <div class="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -521,16 +520,14 @@
     let activeSortDirection = null;
     let columnFilters = {};
 
-    // 簽到快取儲存物件 (由 localStorage 載入)
     let checkinStore = {
-      trafficOut: {},     // 去程遊覽車 { [name]: true }
-      trafficBack: {},    // 回程遊覽車 { [name]: true }
-      diningPerson: {},   // 餐廳入席 { [name]: true }
-      diningBus: {},      // 前往餐廳之接駁遊覽車 { [name]: true }
-      lodgingPerson: {}   // 住宿抵達 { [name]: true }
+      trafficOut: {},
+      trafficBack: {},
+      diningPerson: {},
+      diningBus: {},
+      lodgingPerson: {}
     };
 
-    // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫
     let scheduleData = [
       { id: 1, date: "10/30 (五)", startTime: "", endTime: "", duration: "", location: "", activity: "場佈\n事前綵排", note: "" },
       { id: 2, date: "10/31 (六)", startTime: "09:00", endTime: "10:00", duration: "60", location: "", activity: "接駁車：高鐵台中站－督賀蔬食", note: "- 事前公告+報名；公告住宿費用、提醒重啟夥伴帶「集點卡」\n- 車資：1,200/人（重啟、接班人相同）\n- 遊覽車預定 9:20發車-6號出口（車掌/長：廖培芯）\n- 確認人數，回報出車→需行政支援：勿帶葷食" },
@@ -553,8 +550,8 @@
       { id: 19, date: "備註說明", startTime: "", endTime: "", duration: "", location: "", activity: "遊覽車接駁安排（培芯車長）", note: "遊覽車36人（培芯車長）\n10/31\n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 09:30 知達送到正巧\n- 13:30 正巧出發到台中高鐵" }
     ];
 
-    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）
-    let rawDirectoryData = [
+    // 內建標準成員資料（作爲基準與備援）
+    const defaultDirectoryData = [
       { team: "白", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯-妻, 林政緯-看護" },
       { team: "白", name: "林政緯-妻", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-看護" },
       { team: "白", name: "林政緯-看護", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-妻" },
@@ -622,6 +619,8 @@
       { team: "綠", name: "盧建邦", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_12", roommates: "胡靖韋" }
     ];
 
+    let rawDirectoryData = JSON.parse(JSON.stringify(defaultDirectoryData));
+
     /* =========================================================
        2. 初始化
        ========================================================= */
@@ -632,7 +631,6 @@
       switchTab('schedule');
       fetchCloudDataSilently();
 
-      // 密碼輸入框綁定 Enter 鍵事件
       const pwdInput = document.getElementById('passwordInput');
       if (pwdInput) {
         pwdInput.addEventListener('keydown', (e) => {
@@ -769,7 +767,7 @@
         showToast('目前為瀏覽模式，請點擊右上角「開啟點名模式」解鎖', 'info');
         return;
       }
-      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      const list = rawDirectoryData.filter(i => (i.restaurant || '').includes(restaurantName) && i.name !== '吳佩容');
       list.forEach(i => {
         checkinStore.diningPerson[i.name] = true;
       });
@@ -779,19 +777,16 @@
     }
 
     /* =========================================================
-       4. 跨平台強健剪貼簿複製機制（支援手機、LINE 內嵌瀏覽器）
+       4. 跨平台剪貼簿機制
        ========================================================= */
     function copyTextToClipboard(text, successToastMsg) {
       if (!text) return;
-      
-      // 1. 優先嘗試現代 Clipboard API
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text)
           .then(() => {
             showToast(successToastMsg, 'success');
           })
           .catch(() => {
-            // 若遭安全性拒絕，切換至傳統 textarea 複製
             fallbackCopyText(text, successToastMsg);
           });
       } else {
@@ -827,7 +822,6 @@
       if (successful) {
         showToast(successToastMsg, 'success');
       } else {
-        // 若雙層複製皆受限（常見於高權限手機 LINE 內嵌環境），直接彈出文字窗供一鍵選取複製
         openCopyModal(text);
       }
     }
@@ -860,7 +854,6 @@
       }
     }
 
-    /* 一鍵複製未到名單格式化文字 */
     function copyTrafficUncheckedList(type) {
       const isOut = (type === 'out');
       const title = isOut ? '【遊覽車去程 未上車名單】' : '【遊覽車回程 未上車名單】';
@@ -887,19 +880,17 @@
     }
 
     function copyDiningUncheckedList(restaurantName, reportType = 'person') {
-      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      const list = rawDirectoryData.filter(i => (i.restaurant || '').includes(restaurantName) && i.name !== '吳佩容');
       const isBus = (reportType === 'bus');
 
       let unarrived = [];
       let title = '';
 
       if (isBus) {
-        // 接駁車清點（排除自駕）
         const busMembers = list.filter(i => (i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行'));
         unarrived = busMembers.filter(i => !checkinStore.diningBus[i.name]);
         title = `【${restaurantName} 接駁車未上車名單】`;
       } else {
-        // 人名入席清點
         unarrived = list.filter(i => !checkinStore.diningPerson[i.name]);
         title = `【${restaurantName} 未入席名單】`;
       }
@@ -921,7 +912,7 @@
     }
 
     function copyLodgingUncheckedList(hotelName) {
-      const list = rawDirectoryData.filter(i => i.hotel === hotelName && i.name !== '彭偉峰');
+      const list = rawDirectoryData.filter(i => (i.hotel || '').includes(hotelName) && i.name !== '彭偉峰');
       const unarrived = list.filter(i => !checkinStore.lodgingPerson[i.name]);
 
       const now = new Date();
@@ -940,6 +931,25 @@
       copyTextToClipboard(text, `已複製【${hotelName}】未抵達名單！可直接貼至 LINE`);
     }
 
+    /* 輔助函式：從物件中安全提取欄位值（去除前後空格與多別名支援） */
+    function getSafeFieldValue(row, possibleKeys) {
+      const keys = Object.keys(row);
+      for (const targetKey of possibleKeys) {
+        const found = keys.find(k => k.trim() === targetKey);
+        if (found && row[found] !== undefined && String(row[found]).trim() !== '') {
+          return String(row[found]).trim();
+        }
+      }
+      for (const targetKey of possibleKeys) {
+        const found = keys.find(k => k.trim().includes(targetKey) && !k.trim().includes('隊長'));
+        if (found && row[found] !== undefined && String(row[found]).trim() !== '') {
+          return String(row[found]).trim();
+        }
+      }
+      return '';
+    }
+
+    /* 雲端試算表安全更新（含備援防覆蓋機制） */
     async function fetchCloudDataSilently() {
       const refreshIcon = document.getElementById('refreshIcon');
       refreshIcon.classList.add('fa-spin');
@@ -962,25 +972,50 @@
             complete: (results) => {
               if (results.data && results.data.length > 0) {
                 const parsed = results.data.map(r => {
-                  const name = r['姓名'] || '';
-                  let rest = r['餐廳'] || '';
+                  const name = getSafeFieldValue(r, ['姓名', '名字', 'Name']);
+                  if (!name) return null;
+
+                  // 找出預設名單中的備援資料
+                  const fallback = defaultDirectoryData.find(d => d.name === name) || {};
+
+                  let rest = getSafeFieldValue(r, ['餐廳', '用餐餐廳', '午餐餐廳']);
                   if (name === '吳佩容') rest = 'NO';
+                  // 若雲端解析為空，則使用內建備援值
+                  if (!rest && fallback.restaurant) {
+                    rest = fallback.restaurant;
+                  }
+
+                  const teamVal = getSafeFieldValue(r, ['隊別', '組別']) || fallback.team || '';
+                  const trafficOutVal = getSafeFieldValue(r, ['交通-去程', '去程交通', '去程']) || fallback.trafficOut || '';
+                  const trafficBackVal = getSafeFieldValue(r, ['交通-回程', '回程交通', '回程']) || fallback.trafficBack || '';
+                  
+                  const isTrafficLdrRaw = getSafeFieldValue(r, ['交通-去程_隊長', '交通_隊長']);
+                  const isTrafficLeaderVal = (isTrafficLdrRaw.includes('隊長')) ? '是' : (fallback.isTrafficLeader || '否');
+
+                  const isDiningLdrRaw = getSafeFieldValue(r, ['餐廳_隊長', '用餐_隊長']);
+                  const isDiningLeaderVal = (isDiningLdrRaw.includes('隊長')) ? '是' : (fallback.isDiningLeader || '否');
+
+                  const dietVal = getSafeFieldValue(r, ['飲食注意事項', '飲食', '飲食備註']) || fallback.diet || '無';
+                  const hotelVal = getSafeFieldValue(r, ['住宿', '住宿飯店']) || fallback.hotel || '';
+                  const roomTypeVal = getSafeFieldValue(r, ['房型', '住宿房型']) || fallback.roomType || '';
+                  const roomGroupVal = getSafeFieldValue(r, ['住宿-房型-分組', '房間分組', '分組']) || fallback.roomGroup || '';
+                  const roommatesVal = getSafeFieldValue(r, ['室友']) || fallback.roommates || '';
 
                   return {
-                    team: r['隊別'] || '',
+                    team: teamVal,
                     name: name,
-                    trafficOut: r['交通-去程'] || '',
-                    trafficBack: r['交通-回程'] || '',
-                    isTrafficLeader: (r['交通-去程_隊長'] === '交通-去程_隊長' || r['交通-去程_隊長'] === '隊長') ? '是' : '否',
+                    trafficOut: trafficOutVal,
+                    trafficBack: trafficBackVal,
+                    isTrafficLeader: isTrafficLeaderVal,
                     restaurant: rest,
-                    isDiningLeader: (r['餐廳_隊長'] && r['餐廳_隊長'].includes('隊長')) ? '是' : '否',
-                    diet: r['飲食注意事項'] || '無',
-                    hotel: r['住宿'] || '',
-                    roomType: r['房型'] || '',
-                    roomGroup: r['住宿-房型-分組'] || r['房間分組'] || '',
-                    roommates: r['室友'] || ''
+                    isDiningLeader: isDiningLeaderVal,
+                    diet: dietVal,
+                    hotel: hotelVal,
+                    roomType: roomTypeVal,
+                    roomGroup: roomGroupVal,
+                    roommates: roommatesVal
                   };
-                }).filter(i => i.name);
+                }).filter(Boolean);
 
                 if (parsed.length > 0) {
                   rawDirectoryData = parsed;
@@ -1060,7 +1095,6 @@
       };
       searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
 
-      // 導覽資訊卡與簽到控制列控制
       const trafficBar = document.getElementById('trafficCheckinBar');
       if (tabKey === 'traffic') trafficBar.classList.remove('hidden');
       else trafficBar.classList.add('hidden');
@@ -1302,7 +1336,6 @@
       let list = getProcessedDirectoryList();
       countBadge.textContent = `共 ${list.length} 位人員`;
 
-      // 計算去程與回程遊覽車上車人數
       const busOutMembers = rawDirectoryData.filter(i => i.trafficOut === '遊覽車');
       const busBackMembers = rawDirectoryData.filter(i => i.trafficBack === '遊覽車');
       const checkedOut = busOutMembers.filter(i => checkinStore.trafficOut[i.name]).length;
@@ -1322,7 +1355,6 @@
         const bgClass = getTrafficBackBgClass(item.trafficBack);
         const leaderBadge = getTrafficLeaderBadge(item);
 
-        // 去程打卡按鈕渲染
         let checkinOutHtml = `<span class="text-xs text-slate-400 font-normal">自處/開車</span>`;
         if (item.trafficOut === '遊覽車') {
           const isArrived = !!checkinStore.trafficOut[item.name];
@@ -1338,7 +1370,6 @@
           `;
         }
 
-        // 回程打卡按鈕渲染
         let checkinBackHtml = `<span class="text-xs text-slate-400 font-normal">自處/開車</span>`;
         if (item.trafficBack === '遊覽車') {
           const isArrived = !!checkinStore.trafficBack[item.name];
@@ -1393,12 +1424,12 @@
       return '';
     }
 
-    /* --- [分頁4] 餐飲安排（人名入席點名、接駁車點名、表頭與卡片即時統計） --- */
+    /* --- [分頁4] 餐飲安排（完整修正餐廳名稱與分組顯示） --- */
     function renderDiningTab(thead, tbody, countBadge) {
-      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
+      // 確保只納入有餐廳且非 NO 的成員
+      let list = getProcessedDirectoryList().filter(i => i.restaurant && i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
       countBadge.textContent = `共 ${list.length} 位用餐人員`;
 
-      // 計算全體用餐人員入席與遊覽車接駁上車統計
       const totalDiningMembers = list.length;
       const totalArrivedCount = list.filter(i => checkinStore.diningPerson[i.name]).length;
 
@@ -1406,7 +1437,6 @@
       const totalBusCount = busEligibleMembers.length;
       const totalBusCheckedCount = busEligibleMembers.filter(i => checkinStore.diningBus[i.name]).length;
 
-      // 表頭在「姓名」與「交通方式」欄位皆呈現即時清點進度
       thead.innerHTML = `
         <tr class="text-sm">
           <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
@@ -1442,10 +1472,10 @@
         return;
       }
 
-      // 更新頂部四家餐廳之「入席進度」與「遊覽車接駁進度」
+      // 更新頂部四家餐廳之進度
       const restaurants = ['弎食鉄板', '植田割烹', '湫禾壽喜燒', '麵五三屋'];
       restaurants.forEach(rest => {
-        const members = rawDirectoryData.filter(i => i.restaurant === rest && i.name !== '吳佩容');
+        const members = rawDirectoryData.filter(i => (i.restaurant || '').includes(rest) && i.name !== '吳佩容');
         const arrived = members.filter(i => checkinStore.diningPerson[i.name]).length;
         const elPerson = document.getElementById(`diningStat-${rest}`);
         if (elPerson) elPerson.textContent = `入席: ${arrived}/${members.length}`;
@@ -1476,9 +1506,9 @@
           const count = restCounts[item.restaurant] || 0;
           restCellHtml = `
             <div>
-              <div class="font-bold text-slate-800 flex items-center space-x-1.5">
+              <div class="font-bold text-slate-900 flex items-center space-x-1.5">
                 ${icon}
-                <span>${escapeHtml(item.restaurant)}</span>
+                <span class="text-sm">${escapeHtml(item.restaurant)}</span>
               </div>
               <div class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 mt-1 inline-block">
                 （共 ${count} 位）
@@ -1496,12 +1526,10 @@
 
         const dietDisplay = formatDietDisplay(item.diet);
         
-        // 嚴格對照資料庫：在用餐隊長姓名旁邊加註紅底/紅字隊長標籤
         const leaderBadgeHtml = item.isDiningLeader === '是'
           ? `<span class="inline-block text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 ml-1.5">隊長</span>`
           : '';
 
-        // 人名入席打卡切換按鈕
         const isPersonArrived = !!checkinStore.diningPerson[item.name];
         const personBtnClass = isPersonArrived 
           ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-xs' 
@@ -1509,7 +1537,6 @@
         const personIcon = isPersonArrived ? '<i class="fa-solid fa-check mr-1 text-emerald-200"></i>' : '';
         const personText = isPersonArrived ? '已入席' : '未入席';
 
-        // 接駁車打卡 (非開車者)
         let busCheckinHtml = `<span class="text-xs text-slate-400 font-normal">自駕</span>`;
         if (trafficMethod === '遊覽車') {
           const isBusArrived = !!checkinStore.diningBus[item.name];
@@ -1566,18 +1593,20 @@
     }
 
     function getRestaurantBgClass(rest) {
-      if (rest.includes('麵五三')) return 'bg-amber-50/60 hover:bg-amber-50';
-      if (rest.includes('植田')) return 'bg-emerald-50/60 hover:bg-emerald-50';
-      if (rest.includes('弎食')) return 'bg-rose-50/60 hover:bg-rose-50';
-      if (rest.includes('湫禾')) return 'bg-indigo-50/60 hover:bg-indigo-50';
+      const r = String(rest || '');
+      if (r.includes('麵五三')) return 'bg-amber-50/60 hover:bg-amber-50';
+      if (r.includes('植田')) return 'bg-emerald-50/60 hover:bg-emerald-50';
+      if (r.includes('弎食')) return 'bg-rose-50/60 hover:bg-rose-50';
+      if (r.includes('湫禾')) return 'bg-indigo-50/60 hover:bg-indigo-50';
       return 'bg-white hover:bg-slate-50';
     }
 
     function getRestaurantIcon(rest) {
-      if (rest.includes('麵五三')) return '<i class="fa-solid fa-bowl-food text-amber-600"></i>';
-      if (rest.includes('植田')) return '<i class="fa-solid fa-fish text-emerald-600"></i>';
-      if (rest.includes('弎食')) return '<i class="fa-solid fa-fire-burner text-rose-600"></i>';
-      if (rest.includes('湫禾')) return '<i class="fa-solid fa-plate-wheat text-indigo-600"></i>';
+      const r = String(rest || '');
+      if (r.includes('麵五三')) return '<i class="fa-solid fa-bowl-food text-amber-600"></i>';
+      if (r.includes('植田')) return '<i class="fa-solid fa-fish text-emerald-600"></i>';
+      if (r.includes('弎食')) return '<i class="fa-solid fa-fire-burner text-rose-600"></i>';
+      if (r.includes('湫禾')) return '<i class="fa-solid fa-plate-wheat text-indigo-600"></i>';
       return '<i class="fa-solid fa-utensils text-slate-500"></i>';
     }
 
@@ -1596,10 +1625,9 @@
       let list = getProcessedDirectoryList().filter(i => i.name !== '彭偉峰');
       countBadge.textContent = `共 ${list.length} 位住宿人員`;
 
-      // 更新雙會館即時抵達人數
       const hotels = ['知達', '正巧'];
       hotels.forEach(h => {
-        const members = rawDirectoryData.filter(i => i.hotel === h && i.name !== '彭偉峰');
+        const members = rawDirectoryData.filter(i => (i.hotel || '').includes(h) && i.name !== '彭偉峰');
         const arrived = members.filter(i => checkinStore.lodgingPerson[i.name]).length;
         const el = document.getElementById(`lodgingStat-${h}`);
         if (el) el.textContent = `抵達：${arrived} / ${members.length} 位`;
@@ -1612,7 +1640,7 @@
 
       tbody.innerHTML = list.map((item, idx) => {
         const bgClass = getLodgingComboBgClass(item.hotel, item.roomType);
-        const hotelIcon = item.hotel.includes('正巧')
+        const hotelIcon = (item.hotel || '').includes('正巧')
           ? '<i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>'
           : '<i class="fa-solid fa-landmark text-sky-600 mr-1.5"></i>';
 
@@ -1623,7 +1651,6 @@
           nameSubHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（正巧 聯絡人）</div>`;
         }
 
-        // 人名抵達打卡按鈕
         const isArrived = !!checkinStore.lodgingPerson[item.name];
         const arriveBtnClass = isArrived 
           ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-xs' 
@@ -1784,9 +1811,9 @@
           });
         } else if (currentTab === 'lodging') {
           const getLodgingRank = (item) => {
-            if (item.hotel.includes('知達')) return 1;
-            if (item.hotel.includes('正巧') && item.roomType.includes('4人')) return 2;
-            if (item.hotel.includes('正巧') && item.roomType.includes('2人')) return 3;
+            if ((item.hotel || '').includes('知達')) return 1;
+            if ((item.hotel || '').includes('正巧') && (item.roomType || '').includes('4人')) return 2;
+            if ((item.hotel || '').includes('正巧') && (item.roomType || '').includes('2人')) return 3;
             return 4;
           };
 

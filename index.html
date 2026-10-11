@@ -225,9 +225,15 @@
 
     <!-- 餐飲安排四家餐廳資訊導覽卡片（僅在餐飲安排分頁顯示） -->
     <div id="diningInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 mb-4 shadow-sm text-xs no-print">
+      <!-- 訪談問題題庫橫條 -->
+      <div class="mb-3 p-2.5 bg-amber-50/80 border border-amber-200 rounded-lg flex items-center space-x-2 text-amber-900 font-medium">
+        <i class="fa-solid fa-comments text-amber-600 text-sm flex-shrink-0"></i>
+        <span><strong class="font-bold text-amber-950">問題題庫：</strong>如何重啟草屯？如何撐過疫情？如何建立團隊？接班、重啟、團隊、挫折相關</span>
+      </div>
+
       <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center justify-between">
         <span class="flex items-center"><i class="fa-solid fa-utensils mr-1.5 text-emerald-600"></i>午間餐訪餐廳聯絡與到席回報</span>
-        <span class="text-slate-400 font-normal">隊長／車長／輔導員可一鍵複製未到名單至 LINE</span>
+        <span class="text-slate-400 font-normal">車長／領談員可一鍵複製未到名單至 LINE</span>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <!-- 弎食鉄板料理 -->
@@ -486,16 +492,16 @@
       lodgingPerson: {}
     };
 
-    // 餐飲安排專屬幹部職務標記（車長與輔導員）
+    // 餐飲安排專屬幹部職務標記（車長與領談員）
     const diningRoleMap = {
       "李筱瑋": "弎食車長",
       "胡靖韋": "植田車長",
       "莫惠萍": "湫禾車長",
       "吳曉宣": "麵五三車長",
-      "林珊汝": "弎食輔導員",
-      "范永銀": "植田輔導員",
-      "杜志峰": "麵五三輔導員",
-      "梁懷貞": "湫禾輔導員"
+      "林珊汝": "弎食領談員",
+      "范永銀": "植田領談員",
+      "杜志峰": "麵五三領談員",
+      "梁懷貞": "湫禾領談員"
     };
 
     // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫
@@ -676,6 +682,17 @@
                   const defaultItem = rawDirectoryData.find(x => x.name === name);
                   if (!rest && defaultItem) rest = defaultItem.restaurant;
 
+                  // 讀取「餐廳_交通-車長」與「餐廳_用餐-領談員」欄位
+                  const busLeaderVal = getField(['餐廳_交通-車長', '餐廳交通-車長', '交通-車長', '交通_車長']);
+                  const talkLeaderVal = getField(['餐廳_用餐-領談員', '餐廳用餐-領談員', '用餐-領談員', '用餐_領談員', '領談員']);
+                  
+                  let dynamicRole = '';
+                  if (busLeaderVal && (busLeaderVal.includes('車長') || busLeaderVal === '是')) {
+                    dynamicRole = rest ? `${rest.substring(0, 2)}車長` : '車長';
+                  } else if (talkLeaderVal && (talkLeaderVal.includes('領談員') || talkLeaderVal === '是')) {
+                    dynamicRole = rest ? `${rest.substring(0, 2)}領談員` : '領談員';
+                  }
+
                   return {
                     team: getField(['隊別', '組別']),
                     name: name,
@@ -684,6 +701,7 @@
                     isTrafficLeader: (getField(['交通-去程_隊長', '交通_隊長']) === '隊長') ? '是' : (defaultItem ? defaultItem.isTrafficLeader : '否'),
                     restaurant: rest,
                     isDiningLeader: (getField(['餐廳_隊長', '用餐_隊長']).includes('隊長')) ? '是' : (defaultItem ? defaultItem.isDiningLeader : '否'),
+                    diningRole: dynamicRole,
                     diet: getField(['飲食注意事項', '飲食']) || (defaultItem ? defaultItem.diet : '無'),
                     hotel: getField(['住宿', '飯店']) || (defaultItem ? defaultItem.hotel : ''),
                     roomType: getField(['房型']) || (defaultItem ? defaultItem.roomType : ''),
@@ -1342,8 +1360,8 @@
 
         const dietDisplay = formatDietDisplay(item.diet);
         
-        // 幹部專屬職稱標記（車長與輔導員）
-        const role = diningRoleMap[item.name] || (item.isDiningLeader === '是' ? '隊長' : '');
+        // 幹部專屬職稱標記（車長與領談員）
+        const role = item.diningRole || diningRoleMap[item.name] || (item.isDiningLeader === '是' ? '隊長' : '');
         const leaderBadgeHtml = role
           ? `<span class="inline-block text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 ml-1.5">（${role}）</span>`
           : '';
@@ -1642,20 +1660,20 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'dining') {
-          // 嚴格排序：1. 用餐餐廳 ➔ 2. 幹部層級 (車長優先，輔導員次之) ➔ 3. 交通方式 (遊覽車 > 開車) ➔ 4. 姓名筆畫
+          // 嚴格排序：1. 用餐餐廳 ➔ 2. 幹部層級 (車長優先，領談員次之) ➔ 3. 交通方式 (遊覽車 > 開車) ➔ 4. 姓名筆畫
           list.sort((a, b) => {
             if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
 
-            const getRolePriority = (name) => {
-              const r = diningRoleMap[name] || '';
+            const getRolePriority = (item) => {
+              const r = item.diningRole || diningRoleMap[item.name] || '';
               if (r.includes('車長')) return 1;
-              if (r.includes('輔導員')) return 2;
+              if (r.includes('領談員') || r.includes('輔導員')) return 2;
               if (r) return 3;
               return 4;
             };
 
-            const roleRankA = getRolePriority(a.name);
-            const roleRankB = getRolePriority(b.name);
+            const roleRankA = getRolePriority(a);
+            const roleRankB = getRolePriority(b);
             if (roleRankA !== roleRankB) return roleRankA - roleRankB;
 
             const tMethodRank = (t) => {

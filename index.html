@@ -228,7 +228,7 @@
           <span>遊覽車專責車長：廖培芯</span>
         </div>
         <div class="text-slate-600 font-medium">
-          去程：<span id="trafficOutSummaryBadge" class="font-bold text-emerald-700">0/36</span> ｜ 回程：<span id="trafficBackSummaryBadge" class="font-bold text-emerald-700">0/36</span>
+          去程：<span id="trafficOutSummaryBadge" class="font-bold text-emerald-700">0/35</span> ｜ 回程：<span id="trafficBackSummaryBadge" class="font-bold text-emerald-700">0/35</span>
         </div>
       </div>
       <div class="flex items-center space-x-2">
@@ -279,7 +279,7 @@
           <div>
             <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
               <span class="flex items-center"><i class="fa-solid fa-fish text-emerald-600 mr-1.5"></i>植田割烹</span>
-              <span id="diningStat_植田" class="text-[11px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">0/10</span>
+              <span id="diningStat_植田" class="text-[11px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">0/11</span>
             </div>
             <div class="text-slate-600 mt-1">TEL：<a href="tel:0928385269" class="font-semibold text-emerald-800 hover:underline">0928-385269</a></div>
           </div>
@@ -592,10 +592,10 @@
       { team: "接班人", name: "吳緁苓", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_4", roommates: "洪淑姮" },
       { team: "接班人", name: "洪淑姮", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_4", roommates: "吳緁苓" },
       { team: "接班人", name: "廖培芯", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_3", roommates: "汪方巧, 胡智容, 許家倫" },
-      { team: "接班人", name: "吳佩容", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "吳惠君, 魏鈴芳, 周宗弘" },
+      { team: "接班人", name: "吳佩容", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "吳惠君, 魏鈴芳, 周宗弘" },
       { team: "接班人", name: "周宗弘", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "吳惠君, 魏鈴芳, 吳佩容" },
       { team: "接班人", name: "田富元（田爸）", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_14", roommates: "吳全峰" },
-      { team: "接班人", name: "吳曉宣", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_15", roommates: "陳翊榛" },
+      { team: "接班人", name: "吳曉宣", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_15", roommates: "陳翊榛" },
       { team: "接班人", name: "陳翊榛", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_15", roommates: "吳曉宣" },
       { team: "接班人", name: "林珊汝", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_16", roommates: "林珊汝-夫, 林珊汝-子（6歲）" },
       { team: "接班人", name: "林珊汝-夫", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_16", roommates: "林珊汝, 林珊汝-子（6歲）" },
@@ -709,7 +709,6 @@
 
                   const name = getField(['姓名', 'Name']);
                   let rest = getField(['餐廳', '用餐餐廳', '餐廳名稱']);
-                  if (name === '吳佩容') rest = 'NO';
 
                   const defaultItem = rawDirectoryData.find(x => x.name === name);
                   if (!rest && defaultItem) rest = defaultItem.restaurant;
@@ -926,7 +925,7 @@
         showToast('請先點擊右上角「開啟點名模式」解鎖打卡操作！', 'error');
         return;
       }
-      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName);
       list.forEach(i => {
         checkinStore.diningPerson[i.name] = true;
         if (i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行') {
@@ -1301,7 +1300,7 @@
 
     /* --- [分頁4] 餐飲安排 --- */
     function renderDiningTab(thead, tbody, countBadge) {
-      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
+      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無');
       countBadge.textContent = `共 ${list.length} 位用餐人員`;
 
       const restPersonTotals = {};
@@ -1992,7 +1991,7 @@
     }
 
     function copyDiningUnarrived(restaurantName) {
-      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName);
       const unarrivedPerson = list.filter(i => !checkinStore.diningPerson[i.name]).map(i => i.name);
       
       const busList = list.filter(i => i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行');

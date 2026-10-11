@@ -1,4 +1,481 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>重啟人生-翻轉實驗室 10/31-11/01</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- html2pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    @media print {
+      body { background-color: #fff !important; }
+      .no-print { display: none !important; }
+      thead { display: table-header-group !important; }
+      tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+      .table-container { max-height: none !important; overflow: visible !important; border: none !important; }
+    }
+
+    .table-container {
+      max-height: calc(100vh - 270px);
+      overflow-y: auto;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    /* 表頭固定且實心背景，防止向下滾動時文字穿透重疊 */
+    .sticky-header th {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 25 !important;
+      background-color: #f1f5f9 !important;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    
+    /* 總表隊別底色 */
+    .bg-team-white { background-color: #f1f5f9; }
+    .bg-team-red { background-color: #ffe4e6; }
+    .bg-team-green { background-color: #ecfdf5; }
+    .bg-team-successor { background-color: #fef9c3; }
+
+    /* 活動流程階層項目符號樣式 */
+    .bullet-level-1 {
+      position: relative;
+      padding-left: 1.1rem;
+      margin-bottom: 0.25rem;
+    }
+    .bullet-level-1::before {
+      content: "•";
+      position: absolute;
+      left: 0.2rem;
+      top: -0.05rem;
+      font-weight: bold;
+      color: #64748b;
+    }
+
+    .bullet-level-2 {
+      position: relative;
+      padding-left: 1.85rem;
+      margin-bottom: 0.25rem;
+    }
+    .bullet-level-2::before {
+      content: "◦";
+      position: absolute;
+      left: 0.95rem;
+      top: -0.05rem;
+      font-weight: bold;
+      color: #94a3b8;
+    }
+
+    .bullet-level-3 {
+      position: relative;
+      padding-left: 2.6rem;
+      margin-bottom: 0.25rem;
+    }
+    .bullet-level-3::before {
+      content: "▪";
+      position: absolute;
+      left: 1.75rem;
+      top: 0rem;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+
+    /* 需行政支援醒目卡片 */
+    .admin-support-item {
+      background: linear-gradient(90deg, #f5f3ff 0%, #faf5ff 100%);
+      border-left: 3px solid #8b5cf6;
+      border-radius: 4px;
+      padding: 3px 8px;
+      margin-top: 3px;
+      margin-bottom: 3px;
+      color: #5b21b6;
+      font-weight: 500;
+    }
+
+    /* 篩選彈窗 */
+    #filterDropdownModal {
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- 頂部導覽列 -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow">
+          <i class="fa-solid fa-compass text-lg"></i>
+        </div>
+        <div class="flex items-baseline space-x-2.5">
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">重啟人生-翻轉實驗室 10/31-11/01</h1>
+          <span id="updateTimestamp" class="text-[10px] text-slate-400 font-mono tracking-tight select-none"></span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <!-- 點名打卡模式切換按鈕 -->
+        <button id="checkinModeBtn" onclick="toggleCheckinMode()" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1.5 shadow-sm border bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300">
+          <i id="checkinModeIcon" class="fa-solid fa-user-check text-slate-500"></i>
+          <span id="checkinModeText">開啟點名模式</span>
+        </button>
+
+        <button id="resetCheckinBtn" onclick="promptResetCheckin()" class="hidden px-2.5 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200 shadow-sm" title="清空所有簽到資料">
+          <i class="fa-solid fa-rotate-left mr-1"></i>重設簽到
+        </button>
+
+        <button id="refreshBtn" onclick="manualRefreshData()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
+          <span class="hidden sm:inline">重新整理</span>
+        </button>
+        <button onclick="promptExportPDF()" class="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors flex items-center space-x-1.5 shadow-sm">
+          <i class="fa-solid fa-file-pdf text-rose-400"></i>
+          <span>匯出 (限工作人員使用)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要操作區 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full flex flex-col">
+    
+    <!-- 分頁導航列 -->
+    <div class="flex border-b border-slate-200 overflow-x-auto space-x-2 pb-px no-print select-none">
+      <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-white bg-emerald-600 shadow-sm border-t-2 border-emerald-600">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span>活動流程</span>
+      </button>
+      <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+        <i class="fa-solid fa-table-cells"></i>
+        <span>總表</span>
+      </button>
+      <button onclick="switchTab('traffic')" id="tab-traffic" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+        <i class="fa-solid fa-bus"></i>
+        <span>交通安排</span>
+      </button>
+      <button onclick="switchTab('dining')" id="tab-dining" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+        <i class="fa-solid fa-utensils"></i>
+        <span>餐飲安排</span>
+      </button>
+      <button onclick="switchTab('lodging')" id="tab-lodging" class="tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+        <i class="fa-solid fa-bed"></i>
+        <span>住宿安排</span>
+      </button>
+    </div>
+
+    <!-- 檢索與控制欄 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+      <div class="relative flex-1 max-w-lg">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        <input 
+          type="text" 
+          id="globalSearchInput" 
+          oninput="handleSearchInput(this.value)"
+          placeholder="即時全文檢索（活動流程）..." 
+          class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner"
+        >
+      </div>
+
+      <!-- 右側動作狀態按鈕 -->
+      <div class="flex items-center space-x-3">
+        <div id="scheduleEditControls" class="hidden flex items-center space-x-2">
+          <button id="addScheduleRowBtn" onclick="addScheduleRow()" class="hidden px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 rounded hover:bg-emerald-100 transition-colors">
+            <i class="fa-solid fa-plus mr-1"></i>新增一筆
+          </button>
+          <button id="toggleEditModeBtn" onclick="handleScheduleEditToggle()" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 transition-colors flex items-center space-x-1">
+            <i id="editBtnIcon" class="fa-solid fa-pen-to-square text-slate-500"></i>
+            <span id="editBtnText">編輯流程</span>
+          </button>
+        </div>
+
+        <div id="rowCountBadge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
+          載入中
+        </div>
+      </div>
+    </div>
+
+    <!-- 交通安排專屬快捷回報橫條（僅在交通安排分頁顯示） -->
+    <div id="trafficQuickBar" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs no-print">
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-1.5 font-bold text-slate-800">
+          <i class="fa-solid fa-bus text-emerald-600"></i>
+          <span>遊覽車專責車長：廖培芯</span>
+        </div>
+        <div class="text-slate-600 font-medium">
+          去程：<span id="trafficOutSummaryBadge" class="font-bold text-emerald-700">0/36</span> ｜ 回程：<span id="trafficBackSummaryBadge" class="font-bold text-emerald-700">0/36</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="copyTrafficUnarrived('out')" class="px-2.5 py-1 bg-white text-emerald-800 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition shadow-xs flex items-center space-x-1 font-semibold">
+          <i class="fa-solid fa-copy"></i><span>複製去程未到</span>
+        </button>
+        <button onclick="copyTrafficUnarrived('back')" class="px-2.5 py-1 bg-white text-emerald-800 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition shadow-xs flex items-center space-x-1 font-semibold">
+          <i class="fa-solid fa-copy"></i><span>複製回程未到</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 餐飲安排四家餐廳資訊導覽卡片（僅在餐飲安排分頁顯示） -->
+    <div id="diningInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 mb-4 shadow-sm text-xs no-print">
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+        <span class="flex items-center"><i class="fa-solid fa-utensils mr-1.5 text-emerald-600"></i>午間餐訪餐廳聯絡與到席回報</span>
+        <span class="text-slate-400 font-normal">隊長／車長／輔導員可一鍵複製未到名單至 LINE</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <!-- 弎食鉄板料理 -->
+        <div class="p-2.5 bg-rose-50/70 border border-rose-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-fire-burner text-rose-600 mr-1.5"></i>弎食鉄板料理</span>
+              <span id="diningStat_弎食" class="text-[11px] font-bold text-rose-700 bg-rose-100/70 px-1.5 py-0.2 rounded">0/11</span>
+            </div>
+            <div class="text-slate-600 mt-1">TEL：<a href="tel:0981930305" class="font-semibold text-rose-800 hover:underline">0981-930305</a></div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-rose-200/50 flex items-center justify-between">
+            <a href="https://maps.app.goo.gl/c1w7ijdQV4kwLfw86" target="_blank" class="text-[11px] text-rose-700 hover:underline flex items-center space-x-1">
+              <i class="fa-solid fa-location-dot"></i><span>導航</span>
+            </a>
+            <div class="flex space-x-1">
+              <button onclick="markAllDiningArrived('弎食鉄板料理')" class="px-1.5 py-0.5 bg-rose-200/70 text-rose-900 rounded text-[10px] hover:bg-rose-300">全到✔</button>
+              <button onclick="copyDiningUnarrived('弎食鉄板料理')" class="px-1.5 py-0.5 bg-rose-600 text-white rounded text-[10px] hover:bg-rose-700">複製未到</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 植田割烹 -->
+        <div class="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-fish text-emerald-600 mr-1.5"></i>植田割烹</span>
+              <span id="diningStat_植田" class="text-[11px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">0/10</span>
+            </div>
+            <div class="text-slate-600 mt-1">TEL：<a href="tel:0928385269" class="font-semibold text-emerald-800 hover:underline">0928-385269</a></div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-emerald-200/50 flex items-center justify-between">
+            <a href="https://maps.app.goo.gl/iaRERmMCGPQs8jzFA" target="_blank" class="text-[11px] text-emerald-700 hover:underline flex items-center space-x-1">
+              <i class="fa-solid fa-location-dot"></i><span>導航</span>
+            </a>
+            <div class="flex space-x-1">
+              <button onclick="markAllDiningArrived('植田割烹')" class="px-1.5 py-0.5 bg-emerald-200/70 text-emerald-900 rounded text-[10px] hover:bg-emerald-300">全到✔</button>
+              <button onclick="copyDiningUnarrived('植田割烹')" class="px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] hover:bg-emerald-700">複製未到</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 湫禾壽喜燒 -->
+        <div class="p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-plate-wheat text-indigo-600 mr-1.5"></i>湫禾壽喜燒</span>
+              <span id="diningStat_湫禾" class="text-[11px] font-bold text-indigo-700 bg-indigo-100/70 px-1.5 py-0.2 rounded">0/21</span>
+            </div>
+            <div class="text-slate-600 mt-1">TEL：<a href="tel:0972822535" class="font-semibold text-indigo-800 hover:underline">0972-822535</a></div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-indigo-200/50 flex items-center justify-between">
+            <a href="https://maps.app.goo.gl/9uTNFLocg2wbAAMn8" target="_blank" class="text-[11px] text-indigo-700 hover:underline flex items-center space-x-1">
+              <i class="fa-solid fa-location-dot"></i><span>導航</span>
+            </a>
+            <div class="flex space-x-1">
+              <button onclick="markAllDiningArrived('湫禾壽喜燒')" class="px-1.5 py-0.5 bg-indigo-200/70 text-indigo-900 rounded text-[10px] hover:bg-indigo-300">全到✔</button>
+              <button onclick="copyDiningUnarrived('湫禾壽喜燒')" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[10px] hover:bg-indigo-700">複製未到</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 麵五三屋台ラーメン -->
+        <div class="p-2.5 bg-amber-50/70 border border-amber-100 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
+              <span class="flex items-center"><i class="fa-solid fa-bowl-food text-amber-600 mr-1.5"></i>麵五三屋台</span>
+              <span id="diningStat_麵五三" class="text-[11px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded">0/15</span>
+            </div>
+            <div class="text-slate-600 mt-1">TEL：<a href="tel:0933581872" class="font-semibold text-amber-800 hover:underline">0933-581872</a></div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-amber-200/50 flex items-center justify-between">
+            <a href="https://maps.app.goo.gl/1quzSasgPxd1onwAA" target="_blank" class="text-[11px] text-amber-700 hover:underline flex items-center space-x-1">
+              <i class="fa-solid fa-location-dot"></i><span>導航</span>
+            </a>
+            <div class="flex space-x-1">
+              <button onclick="markAllDiningArrived('麵五三屋台')" class="px-1.5 py-0.5 bg-amber-200/70 text-amber-900 rounded text-[10px] hover:bg-amber-300">全到✔</button>
+              <button onclick="copyDiningUnarrived('麵五三屋台')" class="px-1.5 py-0.5 bg-amber-600 text-white rounded text-[10px] hover:bg-amber-700">複製未到</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 住宿資訊導覽卡片（僅在住宿安排分頁顯示） -->
+    <div id="lodgingInfoCard" class="hidden bg-white border border-slate-200 rounded-xl p-3.5 mb-4 shadow-sm text-xs no-print">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- 知達會館 -->
+        <div class="p-3 bg-sky-50/70 border border-sky-100 rounded-lg flex flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-bold text-slate-900 text-sm flex items-center">
+                <i class="fa-solid fa-hotel text-sky-600 mr-1.5"></i>知達工藝會館
+                <span class="ml-2 text-xs font-semibold text-rose-600">聯絡人：杜志峰</span>
+              </div>
+              <div class="text-slate-600 mt-1">TEL：<a href="tel:0492306969" class="font-semibold text-sky-800 hover:underline">049-2306969</a></div>
+              <div class="text-sky-800 font-semibold mt-1">抵達進度：<span id="lodgingStat_知達">0/41 位</span></div>
+            </div>
+            <div class="flex flex-col space-y-1 text-right">
+              <a href="https://www.zhidacaotun.com.tw/Home/Aboutzida" target="_blank" class="px-2 py-0.5 bg-white text-sky-700 border border-sky-200 rounded hover:bg-sky-50 text-[11px]"><i class="fa-solid fa-globe mr-1"></i>官網</a>
+              <a href="https://maps.app.goo.gl/2a2QDY48EoQpQ9Sc6" target="_blank" class="px-2 py-0.5 bg-sky-600 text-white rounded hover:bg-sky-700 text-[11px]"><i class="fa-solid fa-location-dot mr-1"></i>地圖導航</a>
+            </div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-sky-200/60 flex justify-end">
+            <button onclick="copyLodgingUnarrived('知達')" class="px-2.5 py-1 bg-sky-700 text-white rounded text-[11px] hover:bg-sky-800 font-semibold shadow-xs">
+              <i class="fa-solid fa-copy mr-1"></i>複製知達未抵達名單
+            </button>
+          </div>
+        </div>
+
+        <!-- 正巧文旅 -->
+        <div class="p-3 bg-emerald-50/70 border border-emerald-100 rounded-lg flex flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-bold text-slate-900 text-sm flex items-center">
+                <i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>正巧文旅
+                <span class="ml-2 text-xs font-semibold text-rose-600">聯絡人：吳緁苓</span>
+              </div>
+              <div class="text-slate-600 mt-1">TEL：<a href="tel:0492357166" class="font-semibold text-emerald-800 hover:underline">049-2357166</a></div>
+              <div class="text-emerald-800 font-semibold mt-1">抵達進度：<span id="lodgingStat_正巧">0/17 位</span></div>
+            </div>
+            <div class="flex flex-col space-y-1 text-right">
+              <a href="https://www.booking-owlnest.com/dohohotel?lang=zh_TW&adult=1&child=0&infant=0" target="_blank" class="px-2 py-0.5 bg-white text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-50 text-[11px]"><i class="fa-solid fa-globe mr-1"></i>官網</a>
+              <a href="https://maps.app.goo.gl/8JsYvNw56jJnzLmN9" target="_blank" class="px-2 py-0.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-[11px]"><i class="fa-solid fa-location-dot mr-1"></i>地圖導航</a>
+            </div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-emerald-200/60 flex justify-end">
+            <button onclick="copyLodgingUnarrived('正巧')" class="px-2.5 py-1 bg-emerald-700 text-white rounded text-[11px] hover:bg-emerald-800 font-semibold shadow-xs">
+              <i class="fa-solid fa-copy mr-1"></i>複製正巧未抵達名單
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主要資料表格區域 -->
+    <div id="printableContent" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+      <div id="tableScrollContainer" class="table-container flex-1">
+        <table id="mainDataTable" class="w-full text-left border-collapse table-auto">
+          <thead id="tableHead" class="sticky-header border-b border-slate-300 select-none"></thead>
+          <tbody id="tableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- 表頭篩選彈窗與遮罩 -->
+  <div id="filterModalOverlay" onclick="closeFilterModal()" class="fixed inset-0 bg-slate-900/30 z-40 hidden backdrop-blur-[1px]"></div>
+  <div id="filterDropdownModal" class="fixed z-50 hidden bg-white rounded-xl border border-slate-300 p-4 w-72 max-w-[92vw] shadow-2xl flex flex-col">
+    <div id="filterModalHeader" class="flex items-center justify-between pb-2 border-b border-slate-200 cursor-move select-none">
+      <div class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+        <i class="fa-solid fa-filter text-emerald-600"></i>
+        <span id="modalColumnTitle">欄位篩選</span>
+      </div>
+      <button onclick="closeFilterModal()" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="py-2.5 space-y-1.5 border-b border-slate-100 text-xs">
+      <button onclick="applySort('asc')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center space-x-2">
+        <i class="fa-solid fa-arrow-down-a-z text-slate-500"></i>
+        <span>依筆畫 / 順序由少到多 (升冪)</span>
+      </button>
+      <button onclick="applySort('desc')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center space-x-2">
+        <i class="fa-solid fa-arrow-up-z-a text-slate-500"></i>
+        <span>依筆畫 / 順序由多到少 (降冪)</span>
+      </button>
+    </div>
+
+    <div class="pt-2 flex-1 flex flex-col">
+      <div class="text-[11px] font-semibold text-slate-500 mb-1.5 flex justify-between items-center">
+        <span>選取資料項目</span>
+        <button onclick="toggleSelectAllFilter()" id="selectAllToggleBtn" class="text-emerald-600 hover:underline">全選 / 全消</button>
+      </div>
+      <input type="text" id="filterValueSearch" oninput="renderFilterCheckboxes(this.value)" placeholder="搜尋此欄項目..." class="w-full px-2 py-1 text-xs border border-slate-200 rounded mb-2 bg-slate-50 focus:bg-white outline-none">
+      <div id="filterCheckboxList" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1 divide-y divide-slate-50"></div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2 mt-2">
+      <button onclick="closeFilterModal()" class="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded border border-slate-200">取消</button>
+      <button onclick="confirmColumnFilter()" class="px-3 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm">確定</button>
+    </div>
+  </div>
+
+  <!-- 密碼輸入通用彈窗 (密碼 1223) -->
+  <div id="passwordModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5 border border-slate-200">
+      <div class="flex items-center space-x-2 text-slate-900 font-bold text-base mb-2">
+        <i class="fa-solid fa-lock text-emerald-600"></i>
+        <span id="passwordModalTitle">工作人員身分驗證</span>
+      </div>
+      <p id="passwordModalDesc" class="text-xs text-slate-500 mb-3">請輸入管理密碼以執行此操作：</p>
+      <input type="password" id="passwordInput" placeholder="請輸入密碼" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none mb-2 tracking-widest font-mono">
+      <div id="passwordErrorMsg" class="hidden text-xs text-rose-600 font-semibold mb-3">密碼錯誤，請重新輸入！</div>
+      <div class="flex items-center justify-end space-x-2">
+        <button onclick="closePasswordModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">取消</button>
+        <button onclick="submitPasswordCheck()" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">確認</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINE 回報文字預覽與手動複製彈窗 (保障行動裝置100%可複製) -->
+  <div id="copyModal" class="fixed inset-0 bg-slate-900/40 z-50 hidden backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-slate-200 flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200 mb-3">
+        <div class="flex items-center space-x-2 font-bold text-slate-900 text-sm">
+          <i class="fa-brands fa-line text-emerald-500 text-lg"></i>
+          <span id="copyModalTitle">LINE 回報名單已備妥</span>
+        </div>
+        <button onclick="closeCopyModal()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-500 mb-2">可直接點擊「複製文字」或長按下方文字複製後貼至 LINE 群組：</p>
+      <textarea id="copyModalTextarea" rows="6" readonly class="w-full text-xs font-mono p-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none select-all focus:bg-white"></textarea>
+      <div class="flex items-center justify-end space-x-2 mt-3 pt-2 border-t border-slate-100">
+        <button onclick="closeCopyModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200">關閉</button>
+        <button onclick="executeModalCopy()" class="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm flex items-center space-x-1">
+          <i class="fa-solid fa-clipboard-check"></i><span>複製文字</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 訊息提示條 -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 hidden flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-slate-900 transition-all">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMessage">操作成功</span>
+  </div>
+
+  <script>
+    /* =========================================================
+       1. 狀態與名冊資料（嚴格對齊資料庫真實資料）
+       ========================================================= */
+    const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv';
+    const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv&gid=491680836';
+
+    let currentTab = 'schedule';
+    let searchQuery = '';
+    let isScheduleEditing = false;
+    let isCheckinMode = false; // 是否進入可打卡點名模式 (預設防誤觸只讀)
+    let pendingPasswordCallback = null;
+
+    let activeFilterColumn = null;
+    let activeSortColumn = null;
+    let activeSortDirection = null;
+    let columnFilters = {};
+
+    // 簽到報到本機儲存 (localStorage 秒存秒開)
     let checkinStore = {
       trafficOut: {},
       trafficBack: {},
@@ -19,18 +496,1090 @@
       "梁懷貞": "湫禾輔導員"
     };
 
+    // 嚴格對照工作表「10/31-11/01_流程_v2b-接班人」實體資料庫
     let scheduleData = [
-<!-- ... existing code ... -->
+      { id: 1, date: "10/30 (五)", startTime: "", endTime: "", duration: "", location: "", activity: "場佈\n事前綵排", note: "" },
+      { id: 2, date: "10/31 (六)", startTime: "09:00", endTime: "10:00", duration: "60", location: "", activity: "接駁車：高鐵台中站－督賀蔬食", note: "- 事前公告+報名；公告住宿費用、提醒重啟夥伴帶「集點卡」\n- 車資：1,200/人（重啟、接班人相同）\n- 遊覽車預定 9:20發車-6號出口（車掌/長：廖培芯）\n- 確認人數，回報出車→需行政支援：勿帶葷食" },
+      { id: 3, date: "10/31 (六)", startTime: "10:00", endTime: "10:15", duration: "15", location: "督賀-4樓佛堂", activity: "全體集合並移動至4樓佛堂", note: "行李放旁邊會館\n翰茗辦公室：正巧\n隔壁建設公司：知達" },
+      { id: 4, date: "10/31 (六)", startTime: "10:15", endTime: "11:15", duration: "60", location: "督賀-4樓佛堂", activity: "本次活動說明及介紹", note: "說明：\n- 當日午餐分組、去回時間、注意事項（費用、交通）\n-- 怎麼來正巧（遊覽車、自行開車），就怎麼去餐廳\n- 下午流程、晚餐、餐後活動\n- 場地使用注意事項－嚴禁葷食、注意音量、垃圾處理\n- 報到流程（報到單）及相關文件→需行政支援" },
+      { id: 5, date: "10/31 (六)", startTime: "11:15", endTime: "14:30", duration: "195", location: "食五家各餐廳", activity: "重啟各組（含接班人）至不同餐廳用餐 及 訪談「食五家」老闆們", note: "- 以餐廳來組別已事先分配好（預計5組，每組8-13人不等）\n- 部分工作人員留守（Kate、Yoyo、田爸、培芯留下確認下午的場地與投影片）其餘接班人一同參加「餐訪」活動\n- 4家餐廳地址：\n-- 植田割烹：542南投縣草屯鎮敦和里信義街207號\n-- 弎食鉄板料理 草屯店：542南投縣草屯鎮敦和里碧山路652號\n-- 湫禾壽喜燒：542南投縣草屯鎮碧山路820號\n-- 麵五三屋台：542南投縣草屯鎮新庄里史館路397巷53號（田間）\n- 遊覽車\n-- 11:15 正巧出發送到四個餐廳\n-- 14:30 從四個餐廳接送回來正巧（餐廳休息時間）" },
+      { id: 6, date: "10/31 (六)", startTime: "14:30", endTime: "15:00", duration: "30", location: "督賀-4樓佛堂", activity: "回督賀 集合", note: "- 遊覽車處理" },
+      { id: 7, date: "10/31 (六)", startTime: "15:00", endTime: "16:00", duration: "60", location: "督賀-4樓佛堂", activity: "重啟：活動說明（如：12月活動）\n- 公告 目前「全勤入圍名單」...", note: "- 12月活動及相關訊息\n- 佛堂空間使用規則（禁飲食、尤其是葷食），用餐時間、活動流程告知" },
+      { id: 8, date: "10/31 (六)", startTime: "16:00", endTime: "18:00", duration: "120", location: "督賀-4樓佛堂", activity: "小組討論 + 準備晚上簡報\n規則：\n1. 主題需和食五家-重啟 相關\n2. 現場空間使用注意事項\n3. 時間流程", note: "-「簡報/表演」方式不限，各組自行發揮，主軸簡報陳述「餐訪與重啟人生相關」內容；的告知。\n- 接班人不參與討論\n- 簡報道具（海報紙、彩色筆、A4紙、膠帶、膠水等阿裡不答全來）→需行政支援\n\n建議 16:20-17:00\n接班人內部會議（40 min)\n-- 第2屆 重啟\n-- 第4屆 接班人" },
+      { id: 9, date: "10/31 (六)", startTime: "18:00", endTime: "19:00", duration: "60", location: "督賀-1樓餐廳", activity: "用餐", note: "- 素食合菜，10人一桌；6桌\n- 接班人打散和重啟夥伴一同用餐" },
+      { id: 10, date: "10/31 (六)", startTime: "19:00", endTime: "20:00", duration: "60", location: "督賀-4樓佛堂", activity: "各組午間訪談心得分享", note: "- 每組 8 分鐘；總時長 60分鐘：鐵1植1壽2拉1 共5組\n- 主持組合：Yoyo+Kate / Kyle 支援" },
+      { id: 11, date: "10/31 (六)", startTime: "20:00", endTime: "21:30", duration: "90", location: "督賀-4樓佛堂", activity: "照片故事+年度分享\n說明：選最有感的，不一定是自己或有自己的\n1. 先給時間讓大家各自選照片，每人最多 1 張（剩餘照片開放事後認領）\n2. 回到自己座位（簡報組）－之前，要先「憑照片領衛生紙」（Yoyo擔任衛生紙股長）\n3. 「重啟人生夥伴（接班人不分享）」跟大家分享（設定每人時間m分鐘）\n - 按簡報組順序，每組1人，完成一輪後再回到第1組，依此類推，目標是每人都說到話（待確認？）\n - 避免有些人說太久、或都是同群人在說\n\n※ 此時先發放「重啟人生抽取式衛生紙（就算是大便，也不能忘記我們）」？", note: "- 事前工作：\n-- 選+張貼有重啟活動的照片x 150 張\n-- 1月8張+3月30張+4月30張+6月60張+8月22張\n-- 委請 豐說團隊幫挑 100 片→需行政支援\n--- 選片條件：報名10/31的重啟夥伴都有在裡頭、或不要有任何重啟夥伴被漏掉\n--- 各照片逐張編號（001-150）後，發電子檔給 Yoyo→幫洗出實體照片（6x8）\n--- 10/12（一） 前 完成\n\n- 場地布置：重啟活動照片x150張\n-- YoKaKy 於10/30進駐正巧\n-- 紙本照片背面寫上編號\n-- 布置現場：棉繩+曬衣夾：夾起每張照片\n\n- 當天活動\n-- 重啟夥伴原地站起分享：「我要分享的是88號照片」；控制台可立即播放照片\n\n- 主持組合：Yoyo+Kate（Kyle支援）" },
+      { id: 12, date: "10/31 (六)", startTime: "21:30", endTime: "21:50", duration: "20", location: "", activity: "活動結束\n知達住宿組 回 知達工藝中心", note: "- 接班人，Yoyo和Kyle會 住宿 知達（停車？）\n- 知達組約40人 的交通安排→遊覽車接送" },
+      { id: 13, date: "11/01 (日)", startTime: "09:30", endTime: "10:00", duration: "30", location: "督賀-4樓佛堂", activity: "全體集合\n知達住宿組 完成退房並移動至 正巧", note: "- 督賀及知達都先退房\n- 行李放旁邊會館（翰茗辦公室）\n- 按「各戰隊」坐定\n- 知達組約40人 的交通安排→遊覽車 9:30 出發 往 正巧" },
+      { id: 14, date: "11/01 (日)", startTime: "10:00", endTime: "11:15", duration: "75", location: "督賀-4樓佛堂", activity: "Kate+Kyle：腦筋急轉彎＋無路之路：\n按各戰隊坐：回顧過去一年\n1. 用迎新流程－再填「瓶中信」4問題\n2. 然後抬出藏寶箱及分發瓶中信\n3. 比較年初和現在的自己後，四道：道謝、道愛、道歉、道別\n - 對象：自己；同戰隊夥伴、某項活動中的某些人事物、某人", note: "- 主持：Kyle（Yoyo+Kate支援；活動細部說明：https://reurl.cc/90ydka）\n\n1. 瓶中信（含藏寶箱，按戰隊分類好－10/30 就藏佛堂）\n2. 製作「新版 瓶中信」問題（紙+筆）→需行政支援/發放原瓶中信" },
+      { id: 15, date: "11/01 (日)", startTime: "11:15", endTime: "11:30", duration: "15", location: "督賀-4樓佛堂", activity: "頒發 都蘭冠軍隊T恤\n公布 全勤入圍名單－小禮物（抽取式衛生紙）", note: "" },
+      { id: 16, date: "11/01 (日)", startTime: "11:30", endTime: "11:45", duration: "15", location: "督賀-4樓佛堂", activity: "憲哥獻給大家的祝福", note: "12/20 頒發全勤" },
+      { id: 17, date: "11/01 (日)", startTime: "11:45", endTime: "13:00", duration: "75", location: "督賀-1樓餐廳", activity: "用餐", note: "督賀可支援便當（預算 100-200元之間）" },
+      { id: 18, date: "11/01 (日)", startTime: "13:00", endTime: "13:30", duration: "30", location: "督賀-外部草地空間", activity: "接班人送客\n- 用餐完畢者，先取出自己行李\n- 接駁車：督賀蔬食－高鐵台中站－最遲 13:30 發車", note: "接班人一樓列隊歡送上車，莫文蔚的隊歌（這世界那麼多人）。\nYKK 三個前面，翻歌詞（一句一句印出，12/20再相見）。" },
+      { id: 19, date: "備註說明", startTime: "", endTime: "", duration: "", location: "", activity: "遊覽車接駁安排（培芯車長）", note: "遊覽車36人（培芯車長）\n10/31\n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 09:30 知達送到正巧\n- 13:30 正巧出發到台中高鐵" }
+    ];
+
+    // 實體「成員資料」最新 62 位真實人員數據（吳佩容之用餐餐廳為 NO，不計入餐飲安排）
+    let rawDirectoryData = [
+      { team: "白", name: "林政緯", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯-妻, 林政緯-看護" },
+      { team: "白", name: "林政緯-妻", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-看護" },
+      { team: "白", name: "林政緯-看護", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roommates: "林政緯, 林政緯-妻" },
+      { team: "白", name: "陳群玉", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_1", roommates: "傅國虹, 劉毓菁, 李筱瑋" },
+      { team: "白", name: "傅國虹", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "不吃：辣", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_1", roommates: "陳群玉, 劉毓菁, 李筱瑋" },
+      { team: "白", name: "劉毓菁", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_1", roommates: "陳群玉, 傅國虹, 李筱瑋" },
+      { team: "白", name: "吳惠君", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "魏鈴芳, 吳佩容, 周宗弘" },
+      { team: "白", name: "林慧茹", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_3", roommates: "黃瑪琍" },
+      { team: "白", name: "黃瑪琍", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_3", roommates: "林慧茹" },
+      { team: "白", name: "吳羿慧", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "不吃：牛羊", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_4", roommates: "徐珮甄" },
+      { team: "白", name: "薛雅文", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_5", roommates: "殷燕伶" },
+      { team: "白", name: "陳俐君", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_6", roommates: "何琇菱" },
+      { team: "白", name: "陳若雲", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_8", roommates: "謝宜倩" },
+      { team: "白", name: "魏志毓", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "素食：蛋奶素", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_11", roommates: "吳建逢" },
+      { team: "白", name: "劉又壬", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_13", roommates: "鍾淳仁" },
+      { team: "白", name: "吳全峰", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_14", roommates: "田富元（田爸）" },
+      { team: "白", name: "陶逸婕", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_17", roommates: "吳淋禎" },
+      
+      { team: "紅", name: "李筱瑋", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "是", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_1", roommates: "陳群玉, 傅國虹, 劉毓菁" },
+      { team: "紅", name: "郭淑貞", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_2", roommates: "潘麗婧, 張婷婷, 陳尹恩" },
+      { team: "紅", name: "潘麗婧", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_2", roommates: "郭淑貞, 張婷婷, 陳尹恩" },
+      { team: "紅", name: "汪方巧", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "不吃：鴨肉", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_3", roommates: "胡智容, 許家倫, 廖培芯" },
+      { team: "紅", name: "胡智容", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：辣", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_3", roommates: "汪方巧, 許家倫, 廖培芯" },
+      { team: "紅", name: "莫惠萍", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：牛羊", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_1", roommates: "黃立軒" },
+      { team: "紅", name: "殷燕伶", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_5", roommates: "薛雅文" },
+      { team: "紅", name: "盧萱語", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "過敏：蛋和小麥", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_7", roommates: "陳美好" },
+      { team: "紅", name: "林郁婷", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：牛", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_9", roommates: "黃義涵" },
+      { team: "紅", name: "黃義涵", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_9", roommates: "林郁婷" },
+      { team: "紅", name: "陳厚任", trafficOut: "自行", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_10", roommates: "葉少強" },
+      { team: "紅", name: "葉少強", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_10", roommates: "陳厚任" },
+      { team: "紅", name: "鍾淳仁", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_13", roommates: "劉又壬" },
+      { team: "紅", name: "彭偉峰", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "無", roomType: "無", roomGroup: "無-無_無", roommates: "無" },
+
+      { team: "接班人", name: "謝文憲", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_1", roommates: "無" },
+      { team: "接班人", name: "范永銀", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃：蒜", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_2", roommates: "無" },
+      { team: "接班人", name: "梁懷貞", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "是", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_3", roommates: "李紘逸" },
+      { team: "接班人", name: "吳緁苓", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_4", roommates: "洪淑姮" },
+      { team: "接班人", name: "洪淑姮", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_4", roommates: "吳緁苓" },
+      { team: "接班人", name: "廖培芯", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "是", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_3", roommates: "汪方巧, 胡智容, 許家倫" },
+      { team: "接班人", name: "吳佩容", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "吳惠君, 魏鈴芳, 周宗弘" },
+      { team: "接班人", name: "周宗弘", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "吳惠君, 魏鈴芳, 吳佩容" },
+      { team: "接班人", name: "田富元（田爸）", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_14", roommates: "吳全峰" },
+      { team: "接班人", name: "吳曉宣", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_15", roommates: "陳翊榛" },
+      { team: "接班人", name: "陳翊榛", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_15", roommates: "吳曉宣" },
+      { team: "接班人", name: "林珊汝", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_16", roommates: "林珊汝-夫, 林珊汝-子（6歲）" },
+      { team: "接班人", name: "林珊汝-夫", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_16", roommates: "林珊汝, 林珊汝-子（6歲）" },
+      { team: "接班人", name: "林珊汝-子（6歲）", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_16", roommates: "林珊汝, 林珊汝-夫" },
+      { team: "接班人", name: "吳淋禎", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_17", roommates: "陶逸婕" },
+      { team: "接班人", name: "杜志峰", trafficOut: "自行", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "麵五三屋", isDiningLeader: "是", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_18", roommates: "無" },
+
+      { team: "綠", name: "李紘逸", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_3", roommates: "梁懷貞" },
+      { team: "綠", name: "張婷婷", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃：牛羊", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_2", roommates: "郭淑貞, 潘麗婧, 陳尹恩" },
+      { team: "綠", name: "陳尹恩", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "素食：蛋奶素、五辛素", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_2", roommates: "郭淑貞, 潘麗婧, 張婷婷" },
+      { team: "綠", name: "許家倫", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_3", roommates: "汪方巧, 胡智容, 廖培芯" },
+      { team: "綠", name: "魏鈴芳", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "不吃：牛", hotel: "正巧", roomType: "4人房", roomGroup: "正巧-4人房_4", roommates: "吳惠君, 吳佩容, 周宗弘" },
+      { team: "綠", name: "黃立軒", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "素食：蛋奶素、五辛素", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_1", roommates: "莫惠萍" },
+      { team: "綠", name: "沈佳慧", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_2", roommates: "陳揚舒" },
+      { team: "綠", name: "陳揚舒", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_2", roommates: "沈佳慧" },
+      { team: "綠", name: "徐珮甄", trafficOut: "自行", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "NO", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_4", roommates: "吳羿慧" },
+      { team: "綠", name: "何琇菱", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "弎食鉄板", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_6", roommates: "陳俐君" },
+      { team: "綠", name: "陳美好", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_7", roommates: "盧萱語" },
+      { team: "綠", name: "謝宜倩", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_8", roommates: "陳若雲" },
+      { team: "綠", name: "吳建逢", trafficOut: "開車", trafficBack: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_11", roommates: "魏志毓" },
+      { team: "綠", name: "胡靖韋", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "是", diet: "不吃：牛羊", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_12", roommates: "盧建邦" },
+      { team: "綠", name: "盧建邦", trafficOut: "遊覽車", trafficBack: "遊覽車", isTrafficLeader: "否", restaurant: "植田割烹", isDiningLeader: "否", diet: "無", hotel: "知達", roomType: "2人房", roomGroup: "知達-2人房_12", roommates: "胡靖韋" }
+    ];
+
+    /* =========================================================
+       2. 初始化
+       ========================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadCheckinFromStorage();
+      updateTimestampDisplay();
+      calculateDirectoryRoommates();
+      switchTab('schedule');
+      fetchCloudDataSilently();
+
+      const pwdInput = document.getElementById('passwordInput');
+      if (pwdInput) {
+        pwdInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitPasswordCheck();
+          }
+        });
+      }
+    });
+
+    function loadCheckinFromStorage() {
+      try {
+        const stored = localStorage.getItem('restart_checkin_store_v1');
+        if (stored) {
+          checkinStore = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.warn('讀取簽到儲存失敗，使用預設值', e);
+      }
+    }
+
+    function saveCheckinToStorage() {
+      try {
+        localStorage.setItem('restart_checkin_store_v1', JSON.stringify(checkinStore));
+      } catch (e) {
+        console.warn('寫入簽到儲存失敗', e);
+      }
+    }
+
+    function updateTimestampDisplay() {
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('updateTimestamp').textContent = `${yy}'${mm}${dd}-${hh}${min}`;
+    }
+
+    async function fetchCloudDataSilently() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      refreshIcon.classList.add('fa-spin');
+      
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        const res = await fetch(`${GOOGLE_SHEET_DIR_URL}&_t=${Date.now()}`, {
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const csvText = await res.text();
+          Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              if (results.data && results.data.length > 0) {
+                const parsed = results.data.map(r => {
+                  const getField = (keys) => {
+                    for (const k of keys) {
+                      if (r[k] !== undefined) return String(r[k]).trim();
+                    }
+                    return '';
+                  };
+
+                  const name = getField(['姓名', 'Name']);
+                  let rest = getField(['餐廳', '用餐餐廳', '餐廳名稱']);
+                  if (name === '吳佩容') rest = 'NO';
+
+                  // 保留預設餐廳（若抓取為空則保護不被覆蓋）
+                  const defaultItem = rawDirectoryData.find(x => x.name === name);
+                  if (!rest && defaultItem) rest = defaultItem.restaurant;
+
+                  return {
+                    team: getField(['隊別', '組別']),
+                    name: name,
+                    trafficOut: getField(['交通-去程', '去程交通', '交通去程']) || (defaultItem ? defaultItem.trafficOut : ''),
+                    trafficBack: getField(['交通-回程', '回程交通', '交通回程']) || (defaultItem ? defaultItem.trafficBack : ''),
+                    isTrafficLeader: (getField(['交通-去程_隊長', '交通_隊長']) === '隊長') ? '是' : (defaultItem ? defaultItem.isTrafficLeader : '否'),
+                    restaurant: rest,
+                    isDiningLeader: (getField(['餐廳_隊長', '用餐_隊長']).includes('隊長')) ? '是' : (defaultItem ? defaultItem.isDiningLeader : '否'),
+                    diet: getField(['飲食注意事項', '飲食']) || (defaultItem ? defaultItem.diet : '無'),
+                    hotel: getField(['住宿', '飯店']) || (defaultItem ? defaultItem.hotel : ''),
+                    roomType: getField(['房型']) || (defaultItem ? defaultItem.roomType : ''),
+                    roomGroup: getField(['住宿-房型-分組', '房間分組']) || (defaultItem ? defaultItem.roomGroup : ''),
+                    roommates: getField(['室友']) || (defaultItem ? defaultItem.roommates : '')
+                  };
+                }).filter(i => i.name);
+
+                if (parsed.length > 0) {
+                  rawDirectoryData = parsed;
+                  calculateDirectoryRoommates();
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('雲端直接連線略過，維持原始數據集');
+      } finally {
+        refreshIcon.classList.remove('fa-spin');
+        renderCurrentTab();
+      }
+    }
+
+    function manualRefreshData() {
+      updateTimestampDisplay();
+      fetchCloudDataSilently();
+      showToast('已重新整理資料', 'success');
+    }
+
+    /* =========================================================
+       3. 室友關聯演算
+       ========================================================= */
+    function calculateDirectoryRoommates() {
+      const roomMap = {};
+      rawDirectoryData.forEach(item => {
+        if (!item.roomGroup || item.roomGroup === '無-無_無' || item.roomGroup === 'NONE') return;
+        if (!roomMap[item.roomGroup]) roomMap[item.roomGroup] = [];
+        roomMap[item.roomGroup].push(item.name);
+      });
+
+      rawDirectoryData.forEach(item => {
+        if (item.name === '杜志峰') {
+          item.roommates = '無';
+          return;
+        }
+        if (!item.roomGroup || item.roomGroup === '無-無_無' || item.roomGroup === 'NONE') {
+          item.roommates = '無';
+          return;
+        }
+
+        const mates = (roomMap[item.roomGroup] || []).filter(n => n !== item.name);
+        item.roommates = mates.length > 0 ? mates.join(', ') : '無';
+      });
+    }
+
+    /* =========================================================
+       4. 分頁切換與搜尋提示
+       ========================================================= */
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      isScheduleEditing = false;
+      document.getElementById('editBtnText').textContent = '編輯流程';
+      document.getElementById('editBtnIcon').className = 'fa-solid fa-pen-to-square text-slate-500';
+      document.getElementById('addScheduleRowBtn').classList.add('hidden');
+
+      const tabs = ['schedule', 'overview', 'traffic', 'dining', 'lodging'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tabKey) {
+          btn.className = "tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-white bg-emerald-600 shadow-sm border-t-2 border-emerald-600";
+        } else {
+          btn.className = "tab-btn px-4 py-2.5 font-medium text-sm rounded-t-lg transition-all flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100";
+        }
+      });
+
+      const searchInput = document.getElementById('globalSearchInput');
+      const placeholderMap = {
+        schedule: '即時全文檢索（活動流程）...',
+        overview: '即時全文檢索（總表）...',
+        traffic: '即時全文檢索（交通安排）...',
+        dining: '即時全文檢索（餐飲安排）...',
+        lodging: '即時全文檢索（住宿安排）...'
+      };
+      searchInput.placeholder = placeholderMap[tabKey] || '即時全文檢索...';
+
+      // 導覽資訊卡控制
+      const trafficQuickBar = document.getElementById('trafficQuickBar');
+      if (tabKey === 'traffic') trafficQuickBar.classList.remove('hidden');
+      else trafficQuickBar.classList.add('hidden');
+
+      const diningInfoCard = document.getElementById('diningInfoCard');
+      if (tabKey === 'dining') diningInfoCard.classList.remove('hidden');
+      else diningInfoCard.classList.add('hidden');
+
+      const lodgingInfoCard = document.getElementById('lodgingInfoCard');
+      if (tabKey === 'lodging') lodgingInfoCard.classList.remove('hidden');
+      else lodgingInfoCard.classList.add('hidden');
+
+      const editControls = document.getElementById('scheduleEditControls');
+      if (tabKey === 'schedule') editControls.classList.remove('hidden');
+      else editControls.classList.add('hidden');
+
+      renderCurrentTab();
+    }
+
+    function handleSearchInput(val) {
+      searchQuery = val.trim().toLowerCase();
+      renderCurrentTab();
+    }
+
+    /* =========================================================
+       5. 點名模式解鎖與打卡狀態切換 (密碼 1223)
+       ========================================================= */
+    function toggleCheckinMode() {
+      if (!isCheckinMode) {
+        requestPasswordAuth(() => {
+          isCheckinMode = true;
+          document.getElementById('checkinModeText').textContent = '鎖定點名模式';
+          document.getElementById('checkinModeIcon').className = 'fa-solid fa-lock-open text-emerald-600';
+          document.getElementById('checkinModeBtn').className = "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1.5 shadow-sm border bg-emerald-50 text-emerald-800 border-emerald-300";
+          document.getElementById('resetCheckinBtn').classList.remove('hidden');
+          renderCurrentTab();
+          showToast('點名打卡模式已解鎖', 'success');
+        });
+      } else {
+        isCheckinMode = false;
+        document.getElementById('checkinModeText').textContent = '開啟點名模式';
+        document.getElementById('checkinModeIcon').className = 'fa-solid fa-user-check text-slate-500';
+        document.getElementById('checkinModeBtn').className = "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1.5 shadow-sm border bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300";
+        document.getElementById('resetCheckinBtn').classList.add('hidden');
+        renderCurrentTab();
+        showToast('點名打卡模式已鎖定（唯讀保護）', 'info');
+      }
+    }
+
+    function toggleCheckinItem(type, key) {
+      if (!isCheckinMode) {
+        showToast('請先點擊右上角「開啟點名模式」解鎖打卡操作！', 'error');
+        return;
+      }
+      checkinStore[type][key] = !checkinStore[type][key];
+      saveCheckinToStorage();
+      renderCurrentTab();
+    }
+
+    function markAllDiningArrived(restaurantName) {
+      if (!isCheckinMode) {
+        showToast('請先點擊右上角「開啟點名模式」解鎖打卡操作！', 'error');
+        return;
+      }
+      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      list.forEach(i => {
+        checkinStore.diningPerson[i.name] = true;
+        if (i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行') {
+          checkinStore.diningBus[i.name] = true;
+        }
+      });
+      saveCheckinToStorage();
+      renderCurrentTab();
+      showToast(`${restaurantName} 全員已標記為到齊！`, 'success');
+    }
+
+    function promptResetCheckin() {
+      requestPasswordAuth(() => {
+        if (confirm('確定要清空所有交通、餐飲、住宿的簽到打卡紀錄嗎？（此動作無法還原）')) {
+          checkinStore = {
+            trafficOut: {},
+            trafficBack: {},
+            diningPerson: {},
+            diningBus: {},
+            lodgingPerson: {}
+          };
+          saveCheckinToStorage();
+          renderCurrentTab();
+          showToast('已重設所有簽到資料', 'success');
+        }
+      });
+    }
+
+    /* =========================================================
+       6. 渲染各分頁內容
+       ========================================================= */
+    function renderCurrentTab() {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      const countBadge = document.getElementById('rowCountBadge');
+
+      if (currentTab === 'schedule') {
+        renderScheduleTab(thead, tbody, countBadge);
+      } else if (currentTab === 'overview') {
+        renderOverviewTab(thead, tbody, countBadge);
+      } else if (currentTab === 'traffic') {
+        renderTrafficTab(thead, tbody, countBadge);
+      } else if (currentTab === 'dining') {
+        renderDiningTab(thead, tbody, countBadge);
+      } else if (currentTab === 'lodging') {
+        renderLodgingTab(thead, tbody, countBadge);
+      }
+    }
+
+    /* --- [分頁1] 活動流程 --- */
+    function renderScheduleTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-xs">
+          <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
+          <th class="py-2.5 px-1.5 w-24 text-center">日期</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">起時</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">迄時</th>
+          <th class="py-2.5 px-1.5 w-14 text-center">時長</th>
+          <th class="py-2.5 px-3 w-36">地點</th>
+          <th class="py-2.5 px-3 min-w-[12rem]">活動</th>
+          <th class="py-2.5 px-3 min-w-[18rem] flex-1">說明</th>
+          ${isScheduleEditing ? '<th class="py-2.5 px-2 w-12 text-center text-rose-500">刪除</th>' : ''}
+        </tr>
+      `;
+
+      let list = scheduleData.filter(item => {
+        if (!searchQuery) return true;
+        const text = `${item.date} ${item.startTime} ${item.endTime} ${item.duration} ${item.location} ${item.activity} ${item.note}`.toLowerCase();
+        return text.includes(searchQuery);
+      });
+
+      countBadge.textContent = `共 ${list.length} 項流程`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${isScheduleEditing ? 9 : 8}" class="py-12 text-center text-slate-400 text-sm">無符合的活動流程資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getScheduleRowBg(item.date, item.startTime);
+        
+        if (isScheduleEditing) {
+          return `
+            <tr class="text-xs border-b border-slate-200 ${bgClass}">
+              <td class="py-2 px-2 text-center text-slate-400">${idx + 1}</td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.date)}" onchange="updateScheduleCell(${item.id}, 'date', this.value)"></td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.startTime)}" onchange="updateScheduleCell(${item.id}, 'startTime', this.value)"></td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.endTime)}" onchange="updateScheduleCell(${item.id}, 'endTime', this.value)"></td>
+              <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.duration)}" onchange="updateScheduleCell(${item.id}, 'duration', this.value)"></td>
+              <td class="p-1"><input class="w-full bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.location)}" onchange="updateScheduleCell(${item.id}, 'location', this.value)"></td>
+              <td class="p-1"><textarea rows="2" class="w-full font-semibold bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'activity', this.value)">${escapeHtml(item.activity)}</textarea></td>
+              <td class="p-1"><textarea rows="3" class="w-full bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'note', this.value)">${escapeHtml(item.note)}</textarea></td>
+              <td class="p-1 text-center">
+                <button onclick="deleteScheduleRow(${item.id})" class="text-rose-500 hover:text-rose-700 p-1.5" title="刪除"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>
+          `;
+        }
+
+        return `
+          <tr class="text-xs border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-2.5 px-2 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-2.5 px-1.5 text-center font-medium text-slate-700 whitespace-nowrap">${escapeHtml(item.date)}</td>
+            <td class="py-2.5 px-1.5 text-center font-mono text-slate-600 whitespace-nowrap">${escapeHtml(item.startTime || '-')}</td>
+            <td class="py-2.5 px-1.5 text-center font-mono text-slate-600 whitespace-nowrap">${escapeHtml(item.endTime || '-')}</td>
+            <td class="py-2.5 px-1.5 text-center text-slate-400 italic whitespace-nowrap">${item.duration ? escapeHtml(item.duration + '分') : '-'}</td>
+            <td class="py-2.5 px-3 font-medium text-slate-700 break-words">${escapeHtml(item.location || '-')}</td>
+            <td class="py-2.5 px-3 font-bold text-slate-900 break-words whitespace-pre-line">${escapeHtml(item.activity)}</td>
+            <td class="py-2.5 px-3 text-slate-700 break-words leading-relaxed">${formatScheduleNote(item.note)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getScheduleRowBg(date, startTime) {
+      if (String(date).includes('30')) return 'bg-slate-50 hover:bg-slate-100';
+      const is1031 = String(date).includes('31');
+      let hour = 0;
+      if (startTime) {
+        const parts = startTime.split(':');
+        hour = parseInt(parts[0], 10) || 0;
+      }
+      const isBeforeNoon = hour < 12;
+
+      if (is1031) {
+        return isBeforeNoon ? 'bg-blue-50/70 hover:bg-blue-50' : 'bg-purple-50/70 hover:bg-purple-50';
+      } else {
+        return isBeforeNoon ? 'bg-emerald-50/70 hover:bg-emerald-50' : 'bg-amber-50/70 hover:bg-amber-50';
+      }
+    }
+
+    function formatScheduleNote(text) {
+      if (!text) return '<span class="text-slate-300">-</span>';
+      const lines = text.split('\n');
+      
+      return lines.map(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return '';
+
+        const hasAdminSupport = trimmed.includes('需行政支援');
+        let renderedText = escapeHtml(trimmed);
+
+        let levelClass = '';
+        if (trimmed.startsWith('---')) {
+          levelClass = 'bullet-level-3';
+          renderedText = escapeHtml(trimmed.replace(/^---+/, '').trim());
+        } else if (trimmed.startsWith('--')) {
+          levelClass = 'bullet-level-2';
+          renderedText = escapeHtml(trimmed.replace(/^--+/, '').trim());
+        } else if (trimmed.startsWith('-')) {
+          levelClass = 'bullet-level-1';
+          renderedText = escapeHtml(trimmed.replace(/^-+/, '').trim());
+        }
+
+        if (hasAdminSupport) {
+          return `<div class="${levelClass} admin-support-item"><i class="fa-solid fa-bell mr-1 text-purple-600"></i>${renderedText}</div>`;
+        }
+
+        return `<div class="${levelClass}">${renderedText}</div>`;
+      }).join('');
+    }
+
+    /* --- [分頁2] 總表 --- */
+    function renderOverviewTab(thead, tbody, countBadge) {
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('姓名', 'name', 'w-28')}
+          ${renderHeaderTh('隊別', 'team', 'w-24')}
+          ${renderHeaderTh('交通-去/回', 'trafficCombo', 'w-36')}
+          ${renderHeaderTh('用餐餐廳', 'restaurant', 'w-32')}
+          ${renderHeaderTh('住宿飯店-房型', 'lodgingCombo', 'w-36')}
+          ${renderHeaderTh('室友', 'roommates', '')}
+        </tr>
+      `;
+
+      let list = getProcessedDirectoryList();
+      countBadge.textContent = `共 ${list.length} 位人員`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400 text-sm">無符合的人員資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const teamBg = getTeamBgClass(item.team);
+        const trafficCombo = `${item.trafficOut || '無'}/${item.trafficBack || '無'}`;
+        const lodgingCombo = `${item.hotel}-${item.roomType}`;
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${teamBg}">
+            <td class="py-3 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-3 px-3 font-bold text-slate-900">${escapeHtml(item.name)}</td>
+            <td class="py-3 px-3 font-semibold text-slate-700">${escapeHtml(item.team)}</td>
+            <td class="py-3 px-3 text-slate-700">${escapeHtml(trafficCombo)}</td>
+            <td class="py-3 px-3 font-medium text-slate-800">${escapeHtml(item.restaurant)}</td>
+            <td class="py-3 px-3 text-slate-700">${escapeHtml(lodgingCombo)}</td>
+            <td class="py-3 px-3">${renderRoommateChips(item.roommates)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getTeamBgClass(team) {
+      if (team === '白') return 'bg-team-white hover:bg-slate-200/50';
+      if (team === '紅') return 'bg-team-red hover:bg-rose-100/60';
+      if (team === '綠') return 'bg-team-green hover:bg-emerald-100/60';
+      if (team === '接班人') return 'bg-team-successor hover:bg-amber-100/60';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    /* --- [分頁3] 交通安排（去程與回程打卡點名） --- */
+    function renderTrafficTab(thead, tbody, countBadge) {
+      let busOutTotal = 0;
+      let busOutArrived = 0;
+      let busBackTotal = 0;
+      let busBackArrived = 0;
+
+      rawDirectoryData.forEach(item => {
+        if (item.trafficOut === '遊覽車') {
+          busOutTotal++;
+          if (checkinStore.trafficOut[item.name]) busOutArrived++;
+        }
+        if (item.trafficBack === '遊覽車') {
+          busBackTotal++;
+          if (checkinStore.trafficBack[item.name]) busBackArrived++;
+        }
+      });
+
+      // 更新快捷列標籤
+      const badgeOut = document.getElementById('trafficOutSummaryBadge');
+      if (badgeOut) badgeOut.textContent = `${busOutArrived}/${busOutTotal}`;
+      const badgeBack = document.getElementById('trafficBackSummaryBadge');
+      if (badgeBack) badgeBack.textContent = `${busBackArrived}/${busBackTotal}`;
+
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
+          ${renderHeaderTh('姓名', 'name', 'w-28')}
+          <th class="py-2 px-2.5 font-semibold w-64">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-slate-800">去程點名（已上車：${busOutArrived}/${busOutTotal}）</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 09:20 台中高鐵發車往正巧</span>
+              </div>
+              <button onclick="openFilterModal('trafficOut', '交通-去程', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficOut'] && columnFilters['trafficOut'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
+          <th class="py-2 px-2.5 font-semibold w-64">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-slate-800">回程點名（已上車：${busBackArrived}/${busBackTotal}）</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 13:30 正巧發車往台中高鐵</span>
+              </div>
+              <button onclick="openFilterModal('trafficBack', '交通-回程', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficBack'] && columnFilters['trafficBack'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
+        </tr>
+      `;
+
+      let list = getProcessedDirectoryList();
+      countBadge.textContent = `共 ${list.length} 位人員`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 text-sm">無符合的交通資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getTrafficBackBgClass(item.trafficBack);
+        const leaderBadge = getTrafficLeaderBadge(item);
+
+        // 去程打卡鈕
+        let outBtnHtml = '';
+        if (item.trafficOut === '遊覽車') {
+          const isArrived = !!checkinStore.trafficOut[item.name];
+          const btnClass = isArrived 
+            ? 'bg-emerald-600 text-white font-semibold shadow-xs' 
+            : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+          outBtnHtml = `
+            <div class="flex items-center space-x-2">
+              <span class="font-semibold text-slate-800">遊覽車</span>
+              <button onclick="toggleCheckinItem('trafficOut', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
+                ${isArrived ? '✔ 已上車' : '未上車'}
+              </button>
+            </div>
+          `;
+        } else {
+          outBtnHtml = `<span class="font-semibold text-slate-500">${escapeHtml(item.trafficOut)}</span>`;
+        }
+
+        // 回程打卡鈕
+        let backBtnHtml = '';
+        if (item.trafficBack === '遊覽車') {
+          const isArrived = !!checkinStore.trafficBack[item.name];
+          const btnClass = isArrived 
+            ? 'bg-emerald-600 text-white font-semibold shadow-xs' 
+            : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+          backBtnHtml = `
+            <div class="flex items-center space-x-2">
+              <span class="font-semibold text-slate-800">遊覽車</span>
+              <button onclick="toggleCheckinItem('trafficBack', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
+                ${isArrived ? '✔ 已上車' : '未上車'}
+              </button>
+            </div>
+          `;
+        } else {
+          backBtnHtml = `<span class="font-semibold text-slate-500">${escapeHtml(item.trafficBack)}</span>`;
+        }
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-2.5 px-2 text-center text-slate-400 align-middle">${idx + 1}</td>
+            <td class="py-2.5 px-2.5 align-middle">
+              <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
+              ${leaderBadge}
+            </td>
+            <td class="py-2.5 px-2.5 align-middle">${outBtnHtml}</td>
+            <td class="py-2.5 px-2.5 align-middle">${backBtnHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getTrafficBackBgClass(trafficBack) {
+      if (trafficBack === '遊覽車') return 'bg-teal-50/70 hover:bg-teal-50';
+      if (trafficBack === '開車') return 'bg-amber-50/70 hover:bg-amber-50';
+      if (trafficBack === '高鐵') return 'bg-sky-50/70 hover:bg-sky-50';
+      if (trafficBack === '自處' || trafficBack === '自行') return 'bg-slate-100/60 hover:bg-slate-100';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    function getTrafficLeaderBadge(item) {
+      if (item.isTrafficLeader === '是') {
+        return `<div class="text-[11px] font-semibold text-rose-600 mt-0.5">（遊覽車 隊長）</div>`;
+      }
+      return '';
+    }
+
+    /* --- [分頁4] 餐飲安排（人名入席點名、遊覽車接駁點名、幹部標籤） --- */
+    function renderDiningTab(thead, tbody, countBadge) {
+      let list = getProcessedDirectoryList().filter(i => i.restaurant !== 'NO' && i.restaurant !== '無' && i.name !== '吳佩容');
+      countBadge.textContent = `共 ${list.length} 位用餐人員`;
+
+      // 統計各餐廳用餐入席人數
+      const restPersonTotals = {};
+      const restPersonArrived = {};
+      const restBusTotals = {};
+      const restBusArrived = {};
+
+      list.forEach(item => {
+        const r = item.restaurant;
+        restPersonTotals[r] = (restPersonTotals[r] || 0) + 1;
+        if (checkinStore.diningPerson[item.name]) {
+          restPersonArrived[r] = (restPersonArrived[r] || 0) + 1;
+        }
+
+        const isBus = (item.trafficOut === '遊覽車' || item.trafficOut === '自處' || item.trafficOut === '自行');
+        if (isBus) {
+          restBusTotals[r] = (restBusTotals[r] || 0) + 1;
+          if (checkinStore.diningBus[item.name]) {
+            restBusArrived[r] = (restBusArrived[r] || 0) + 1;
+          }
+        }
+      });
+
+      // 更新頂部四餐廳卡片統計數字
+      const updateCardStat = (key, restName) => {
+        const el = document.getElementById(`diningStat_${key}`);
+        if (el) {
+          const pArr = restPersonArrived[restName] || 0;
+          const pTot = restPersonTotals[restName] || 0;
+          el.textContent = `${pArr}/${pTot} 位`;
+        }
+      };
+      updateCardStat('弎食', '弎食鉄板料理');
+      updateCardStat('植田', '植田割烹');
+      updateCardStat('湫禾', '湫禾壽喜燒');
+      updateCardStat('麵五三', '麵五三屋台');
+
+      // 全體入席與接駁統計
+      const totalDiningPersons = list.length;
+      const totalDiningArrived = Object.values(restPersonArrived).reduce((a, b) => a + b, 0);
+      const totalBusPersons = Object.values(restBusTotals).reduce((a, b) => a + b, 0);
+      const totalBusArrived = Object.values(restBusArrived).reduce((a, b) => a + b, 0);
+
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('用餐餐廳', 'restaurant', 'w-44')}
+          <th class="py-2.5 px-3 font-semibold w-48">
+            <div class="flex items-center justify-between">
+              <div>
+                <span>姓名（入席點名）</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">已入席：${totalDiningArrived} / ${totalDiningPersons}</span>
+              </div>
+              <button onclick="openFilterModal('name', '姓名', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['name'] && columnFilters['name'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
+          ${renderHeaderTh('飲食注意事項', 'diet', 'w-44')}
+          <th class="py-2.5 px-3 font-semibold w-48">
+            <div class="flex items-center justify-between">
+              <div>
+                <span>交通方式（接駁點名）</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車已上車：${totalBusArrived} / ${totalBusPersons}</span>
+              </div>
+              <button onclick="openFilterModal('trafficOut', '交通方式', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficOut'] && columnFilters['trafficOut'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
+        </tr>
+      `;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的餐飲資料</td></tr>`;
+        return;
+      }
+
+      const displayedFirstInGroup = new Set();
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getRestaurantBgClass(item.restaurant);
+        const icon = getRestaurantIcon(item.restaurant);
+
+        // 餐廳分組名稱與人數
+        let restCellHtml = '';
+        if (!displayedFirstInGroup.has(item.restaurant)) {
+          displayedFirstInGroup.add(item.restaurant);
+          const count = restPersonTotals[item.restaurant] || 0;
+          restCellHtml = `
+            <div>
+              <div class="font-bold text-slate-800 flex items-center space-x-1.5">
+                ${icon}
+                <span>${escapeHtml(item.restaurant)}</span>
+              </div>
+              <div class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 mt-1 inline-block">
+                （共 ${count} 位）
+              </div>
+            </div>
+          `;
+        } else {
+          restCellHtml = `
+            <div class="font-medium text-slate-700 flex items-center space-x-1.5 opacity-90">
+              ${icon}
+              <span>${escapeHtml(item.restaurant)}</span>
+            </div>
+          `;
+        }
+
         const dietDisplay = formatDietDisplay(item.diet);
         
+        // 幹部專屬職稱標記（車長與輔導員）
         const role = diningRoleMap[item.name] || (item.isDiningLeader === '是' ? '隊長' : '');
         const leaderBadgeHtml = role
           ? `<span class="inline-block text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 ml-1.5">（${role}）</span>`
           : '';
 
+        // 入席點名按鈕
         const isPersonArrived = !!checkinStore.diningPerson[item.name];
         const personBtnClass = isPersonArrived 
-<!-- ... existing code ... -->
+          ? 'bg-emerald-600 text-white font-semibold shadow-xs' 
+          : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+
+        // 接駁點名按鈕
+        const isBus = (item.trafficOut === '遊覽車' || item.trafficOut === '自處' || item.trafficOut === '自行');
+        let busCellHtml = '';
+        if (isBus) {
+          const isBusArrived = !!checkinStore.diningBus[item.name];
+          const busBtnClass = isBusArrived
+            ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+            : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+          busCellHtml = `
+            <div class="flex items-center space-x-2">
+              <span class="font-medium text-slate-800">遊覽車</span>
+              <button onclick="toggleCheckinItem('diningBus', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${busBtnClass}">
+                ${isBusArrived ? '✔ 已接駁' : '未上車'}
+              </button>
+            </div>
+          `;
+        } else {
+          busCellHtml = `<span class="text-xs text-slate-500 font-medium">自駕（免接駁）</span>`;
+        }
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-3 px-3 text-center text-slate-400 align-middle">${idx + 1}</td>
+            <td class="py-3 px-3 align-middle">${restCellHtml}</td>
+            <td class="py-3 px-3 align-middle">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-slate-900">${escapeHtml(item.name)}</span>
+                  ${leaderBadgeHtml}
+                </div>
+                <button onclick="toggleCheckinItem('diningPerson', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ml-2 ${personBtnClass}">
+                  ${isPersonArrived ? '✔ 已入席' : '未入席'}
+                </button>
+              </div>
+            </td>
+            <td class="py-3 px-3 align-middle">${dietDisplay}</td>
+            <td class="py-3 px-3 align-middle">${busCellHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function formatDietDisplay(diet) {
+      if (!diet || diet === '無') {
+        return `<span class="text-slate-400">無</span>`;
+      }
+      if (diet.includes('素')) {
+        return `<span class="inline-block px-2.5 py-1 text-xs font-semibold rounded bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">${escapeHtml(diet)}</span>`;
+      }
+      if (diet.includes('過敏')) {
+        return `<span class="inline-block px-2.5 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">${escapeHtml(diet)}</span>`;
+      }
+      return `<span class="inline-block px-2 py-0.5 text-xs font-medium rounded bg-rose-50 text-rose-700 border border-rose-200">${escapeHtml(diet)}</span>`;
+    }
+
+    function getRestaurantBgClass(rest) {
+      if (rest.includes('麵五三')) return 'bg-amber-50/60 hover:bg-amber-50';
+      if (rest.includes('植田')) return 'bg-emerald-50/60 hover:bg-emerald-50';
+      if (rest.includes('弎食')) return 'bg-rose-50/60 hover:bg-rose-50';
+      if (rest.includes('湫禾')) return 'bg-indigo-50/60 hover:bg-indigo-50';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    function getRestaurantIcon(rest) {
+      if (rest.includes('麵五三')) return '<i class="fa-solid fa-bowl-food text-amber-600"></i>';
+      if (rest.includes('植田')) return '<i class="fa-solid fa-fish text-emerald-600"></i>';
+      if (rest.includes('弎食')) return '<i class="fa-solid fa-fire-burner text-rose-600"></i>';
+      if (rest.includes('湫禾')) return '<i class="fa-solid fa-plate-wheat text-indigo-600"></i>';
+      return '<i class="fa-solid fa-utensils text-slate-500"></i>';
+    }
+
+    /* --- [分頁5] 住宿安排（人名抵達打卡點名、同房到齊提示） --- */
+    function renderLodgingTab(thead, tbody, countBadge) {
+      let list = getProcessedDirectoryList().filter(i => i.name !== '彭偉峰');
+      countBadge.textContent = `共 ${list.length} 位住宿人員`;
+
+      // 統計會館抵達人數
+      let zidaTotal = 0;
+      let zidaArrived = 0;
+      let zhengTotal = 0;
+      let zhengArrived = 0;
+
+      list.forEach(item => {
+        if (item.hotel.includes('知達')) {
+          zidaTotal++;
+          if (checkinStore.lodgingPerson[item.name]) zidaArrived++;
+        } else if (item.hotel.includes('正巧')) {
+          zhengTotal++;
+          if (checkinStore.lodgingPerson[item.name]) zhengArrived++;
+        }
+      });
+
+      const zidaBadge = document.getElementById('lodgingStat_知達');
+      if (zidaBadge) zidaBadge.textContent = `${zidaArrived} / ${zidaTotal} 位`;
+      const zhengBadge = document.getElementById('lodgingStat_正巧');
+      if (zhengBadge) zhengBadge.textContent = `${zhengArrived} / ${zhengTotal} 位`;
+
+      thead.innerHTML = `
+        <tr class="text-sm">
+          <th class="py-3 px-3 text-center w-10 text-slate-400">#</th>
+          ${renderHeaderTh('住宿飯店', 'hotel', 'w-32')}
+          ${renderHeaderTh('房型', 'roomType', 'w-28')}
+          <th class="py-2.5 px-3 font-semibold w-48">
+            <div class="flex items-center justify-between">
+              <div>
+                <span>姓名（抵達點名）</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">全員抵達：${zidaArrived + zhengArrived} / ${zidaTotal + zhengTotal}</span>
+              </div>
+              <button onclick="openFilterModal('name', '姓名', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-filter text-slate-300 ${columnFilters['name'] && columnFilters['name'].size > 0 ? 'text-emerald-600' : ''}"></i>
+              </button>
+            </div>
+          </th>
+          ${renderHeaderTh('同房室友', 'roommates', '')}
+        </tr>
+      `;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的住宿資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((item, idx) => {
+        const bgClass = getLodgingComboBgClass(item.hotel, item.roomType);
+        const hotelIcon = item.hotel.includes('正巧')
+          ? '<i class="fa-solid fa-tree-city text-emerald-600 mr-1.5"></i>'
+          : '<i class="fa-solid fa-landmark text-sky-600 mr-1.5"></i>';
+
+        // 聯絡人換行紅字
+        let contactBadgeHtml = '';
+        if (item.name === '杜志峰') {
+          contactBadgeHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（知達 聯絡人）</div>`;
+        } else if (item.name === '吳緁苓') {
+          contactBadgeHtml = `<div class="text-[11px] font-semibold text-rose-600 leading-tight mt-0.5">（正巧 聯絡人）</div>`;
+        }
+
+        // 抵達打卡鈕
+        const isArrived = !!checkinStore.lodgingPerson[item.name];
+        const arriveBtnClass = isArrived
+          ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+          : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+
+        // 同房全員到齊檢查
+        let roomAllArrived = false;
+        if (item.roomGroup && item.roomGroup !== '無-無_無') {
+          const roomMates = list.filter(x => x.roomGroup === item.roomGroup);
+          roomAllArrived = roomMates.length > 0 && roomMates.every(m => checkinStore.lodgingPerson[m.name]);
+        }
+
+        const roomTypeBadge = roomAllArrived
+          ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-100 font-bold px-2 py-0.5 rounded border border-emerald-300">${escapeHtml(item.roomType)} ✔ 全到齊</span>`
+          : `<span>${escapeHtml(item.roomType)}</span>`;
+
+        return `
+          <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-3 px-3 text-center text-slate-400 align-middle">${idx + 1}</td>
+            <td class="py-3 px-3 font-bold text-slate-800 align-middle flex items-center">
+              ${hotelIcon}
+              <span>${escapeHtml(item.hotel)}</span>
+            </td>
+            <td class="py-3 px-3 font-semibold text-slate-700 align-middle">${roomTypeBadge}</td>
+            <td class="py-3 px-3 align-middle">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
+                  ${contactBadgeHtml}
+                </div>
+                <button onclick="toggleCheckinItem('lodgingPerson', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ml-2 ${arriveBtnClass}">
+                  ${isArrived ? '✔ 已抵達' : '未抵達'}
+                </button>
+              </div>
+            </td>
+            <td class="py-3 px-3 align-middle">${renderRoommateChips(item.roommates)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getLodgingComboBgClass(hotel, roomType) {
+      const combo = `${hotel}-${roomType}`;
+      if (combo.includes('正巧-4人')) return 'bg-emerald-50/60 hover:bg-emerald-50';
+      if (combo.includes('正巧-2人')) return 'bg-teal-50/60 hover:bg-teal-50';
+      if (combo.includes('知達-2人')) return 'bg-sky-50/60 hover:bg-sky-50';
+      return 'bg-white hover:bg-slate-50';
+    }
+
+    function renderRoommateChips(roommatesStr) {
+      if (!roommatesStr || roommatesStr === '無') {
+        return `<span class="text-slate-400 text-xs">無</span>`;
+      }
+      if (roommatesStr === '家人') {
+        return `<span class="inline-block bg-purple-100 text-purple-800 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-purple-200">家人</span>`;
+      }
+
+      const names = roommatesStr.split(/[,、]/).map(n => n.trim()).filter(Boolean);
+      return `
+        <div class="flex flex-wrap gap-1.5">
+          ${names.map(name => `
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <i class="fa-solid fa-user mr-1 text-[10px] text-emerald-600"></i>
+              ${escapeHtml(name)}
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    /* =========================================================
+       7. 排序與表頭過濾邏輯
+       ========================================================= */
+    function renderHeaderTh(colTitle, colKey, widthClass) {
+      const hasFilter = columnFilters[colKey] && columnFilters[colKey].size > 0;
+      const isSorted = activeSortColumn === colKey;
+      let sortIcon = 'fa-solid fa-arrow-down-up-across-line text-slate-300';
+      if (isSorted) {
+        sortIcon = activeSortDirection === 'asc' 
+          ? 'fa-solid fa-arrow-up-short-wide text-emerald-600' 
+          : 'fa-solid fa-arrow-down-wide-short text-emerald-600';
+      }
+
+      return `
+        <th class="py-3 px-3 font-semibold ${widthClass}">
+          <div class="flex items-center justify-between group">
+            <span>${colTitle}</span>
+            <button onclick="openFilterModal('${colKey}', '${colTitle}', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
+              <i class="${sortIcon} ${hasFilter ? 'text-emerald-600' : ''}"></i>
+            </button>
+          </div>
+        </th>
+      `;
+    }
+
+    function getProcessedDirectoryList() {
+      let list = [...rawDirectoryData];
+
+      if (searchQuery) {
+        list = list.filter(item => {
+          const rowText = `${item.team} ${item.name} ${item.trafficOut} ${item.trafficBack} ${item.restaurant} ${item.diet} ${item.hotel} ${item.roomType} ${item.roommates}`.toLowerCase();
+          return rowText.includes(searchQuery);
+        });
+      }
+
+      Object.keys(columnFilters).forEach(colKey => {
+        const allowedSet = columnFilters[colKey];
+        if (allowedSet && allowedSet.size > 0) {
+          list = list.filter(item => {
+            const val = getColumnValue(item, colKey);
+            return allowedSet.has(val);
+          });
+        }
+      });
+
+      const strokeSort = (a, b) => (a || '').localeCompare(b || '', 'zh-Hant-TW', { collation: 'stroke' });
+
+      if (activeSortColumn && activeSortDirection) {
+        list.sort((a, b) => {
+          const valA = getColumnValue(a, activeSortColumn);
+          const valB = getColumnValue(b, activeSortColumn);
+          const res = strokeSort(valA, valB);
+          return activeSortDirection === 'asc' ? res : -res;
+        });
+      } else {
+        if (currentTab === 'overview') {
+          const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
+          list.sort((a, b) => {
+            const tA = teamOrder[a.team] || 99;
+            const tB = teamOrder[b.team] || 99;
+            if (tA !== tB) return tA - tB;
+            if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
+            const comboA = `${a.hotel}-${a.roomType}`;
+            const comboB = `${b.hotel}-${b.roomType}`;
+            if (comboA !== comboB) return strokeSort(comboA, comboB);
+            return strokeSort(a.name, b.name);
+          });
+        } else if (currentTab === 'traffic') {
           list.sort((a, b) => {
             if (a.isTrafficLeader === '是' && b.isTrafficLeader !== '是') return -1;
             if (a.isTrafficLeader !== '是' && b.isTrafficLeader === '是') return 1;
@@ -44,6 +1593,7 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'dining') {
+          // 嚴格排序：1. 用餐餐廳 ➔ 2. 幹部層級 (車長優先，輔導員次之) ➔ 3. 交通方式 (遊覽車 > 開車) ➔ 4. 姓名筆畫
           list.sort((a, b) => {
             if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
 
@@ -71,5 +1621,387 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'lodging') {
-<!-- ... existing code ... -->
-`
+          // 嚴格排序：1. 知達 ➔ 2. 正巧-4人房 ➔ 3. 正巧-2人房 ➔ 其餘
+          const getLodgingRank = (item) => {
+            if (item.hotel.includes('知達')) return 1;
+            if (item.hotel.includes('正巧') && item.roomType.includes('4人')) return 2;
+            if (item.hotel.includes('正巧') && item.roomType.includes('2人')) return 3;
+            return 4;
+          };
+
+          list.sort((a, b) => {
+            const rankA = getLodgingRank(a);
+            const rankB = getLodgingRank(b);
+            if (rankA !== rankB) return rankA - rankB;
+            if (a.roomGroup !== b.roomGroup) return strokeSort(a.roomGroup, b.roomGroup);
+            return strokeSort(a.name, b.name);
+          });
+        }
+      }
+
+      return list;
+    }
+
+    function getColumnValue(item, colKey) {
+      if (colKey === 'trafficCombo') return `${item.trafficOut}/${item.trafficBack}`;
+      if (colKey === 'lodgingCombo') return `${item.hotel}-${item.roomType}`;
+      return item[colKey] || '';
+    }
+
+    /* --- 篩選彈窗 --- */
+    function openFilterModal(colKey, colTitle, event) {
+      event.stopPropagation();
+      activeFilterColumn = colKey;
+      document.getElementById('modalColumnTitle').textContent = `${colTitle} 篩選`;
+
+      const modal = document.getElementById('filterDropdownModal');
+      const overlay = document.getElementById('filterModalOverlay');
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const modalW = 288;
+      let leftPos = rect.left - 100;
+      if (leftPos + modalW > window.innerWidth - 10) leftPos = window.innerWidth - modalW - 10;
+      if (leftPos < 10) leftPos = 10;
+      
+      modal.style.top = `${Math.min(rect.bottom + 8, window.innerHeight - 360)}px`;
+      modal.style.left = `${leftPos}px`;
+
+      renderFilterCheckboxes('');
+      document.getElementById('filterValueSearch').value = '';
+
+      overlay.classList.remove('hidden');
+      modal.classList.remove('hidden');
+    }
+
+    function closeFilterModal() {
+      document.getElementById('filterDropdownModal').classList.add('hidden');
+      document.getElementById('filterModalOverlay').classList.add('hidden');
+    }
+
+    function renderFilterCheckboxes(searchTerm) {
+      if (!activeFilterColumn) return;
+      const listContainer = document.getElementById('filterCheckboxList');
+      
+      const allVals = Array.from(new Set(rawDirectoryData.map(i => getColumnValue(i, activeFilterColumn)))).filter(Boolean);
+      const currentSelected = columnFilters[activeFilterColumn] || new Set(allVals);
+
+      const filteredVals = allVals.filter(v => !searchTerm || v.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      listContainer.innerHTML = filteredVals.map(val => {
+        const isChecked = currentSelected.has(val);
+        return `
+          <label class="flex items-center space-x-2 py-1 px-1 rounded hover:bg-slate-100 cursor-pointer">
+            <input type="checkbox" value="${escapeHtml(val)}" class="filter-chk accent-emerald-600 rounded" ${isChecked ? 'checked' : ''}>
+            <span class="truncate">${escapeHtml(val)}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function toggleSelectAllFilter() {
+      const chks = document.querySelectorAll('.filter-chk');
+      const allChecked = Array.from(chks).every(c => c.checked);
+      chks.forEach(c => c.checked = !allChecked);
+    }
+
+    function confirmColumnFilter() {
+      if (!activeFilterColumn) return;
+      const chks = document.querySelectorAll('.filter-chk');
+      const selected = new Set();
+      chks.forEach(c => {
+        if (c.checked) selected.add(c.value);
+      });
+
+      columnFilters[activeFilterColumn] = selected;
+      closeFilterModal();
+      renderCurrentTab();
+    }
+
+    function applySort(direction) {
+      activeSortColumn = activeFilterColumn;
+      activeSortDirection = direction;
+      closeFilterModal();
+      renderCurrentTab();
+    }
+
+    /* =========================================================
+       8. 活動流程編輯 (密碼：1223)
+       ========================================================= */
+    function handleScheduleEditToggle() {
+      if (!isScheduleEditing) {
+        requestPasswordAuth(() => {
+          isScheduleEditing = true;
+          document.getElementById('editBtnText').textContent = '完成並鎖定';
+          document.getElementById('editBtnIcon').className = 'fa-solid fa-check text-emerald-600';
+          document.getElementById('addScheduleRowBtn').classList.remove('hidden');
+          renderCurrentTab();
+          showToast('已進入活動流程編輯模式', 'success');
+        });
+      } else {
+        isScheduleEditing = false;
+        document.getElementById('editBtnText').textContent = '編輯流程';
+        document.getElementById('editBtnIcon').className = 'fa-solid fa-pen-to-square text-slate-500';
+        document.getElementById('addScheduleRowBtn').classList.add('hidden');
+        renderCurrentTab();
+        showToast('活動流程已鎖定儲存', 'success');
+      }
+    }
+
+    function updateScheduleCell(id, field, value) {
+      const target = scheduleData.find(item => item.id === id);
+      if (target) {
+        target[field] = value;
+      }
+    }
+
+    function addScheduleRow() {
+      const nextId = scheduleData.length > 0 ? Math.max(...scheduleData.map(i => i.id)) + 1 : 1;
+      scheduleData.push({
+        id: nextId,
+        date: "10/31 (六)",
+        startTime: "12:00",
+        endTime: "13:00",
+        duration: "60",
+        location: "新地點",
+        activity: "新活動項目",
+        note: "- 項目說明\n-- 備註事項"
+      });
+      renderCurrentTab();
+      showToast('已新增一筆流程', 'success');
+    }
+
+    function deleteScheduleRow(id) {
+      scheduleData = scheduleData.filter(i => i.id !== id);
+      renderCurrentTab();
+      showToast('已刪除該筆流程', 'success');
+    }
+
+    /* =========================================================
+       9. 一鍵複製未到名單至 LINE 回報核心引擎
+       ========================================================= */
+    function formatTimeNow() {
+      const d = new Date();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const date = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${m}/${date} ${h}:${min}`;
+    }
+
+    function copyTrafficUnarrived(direction) {
+      const isOut = direction === 'out';
+      const label = isOut ? '去程（台中高鐵➔正巧）' : '回程（正巧➔台中高鐵）';
+      const storeKey = isOut ? 'trafficOut' : 'trafficBack';
+
+      const unarrived = rawDirectoryData
+        .filter(i => (isOut ? i.trafficOut : i.trafficBack) === '遊覽車')
+        .filter(i => !checkinStore[storeKey][i.name])
+        .map(i => i.name);
+
+      let text = `【遊覽車${label} 未上車名單（共 ${unarrived.length} 位）】\n`;
+      if (unarrived.length === 0) {
+        text += `✔ 全員已順利上車！\n`;
+      } else {
+        unarrived.forEach((name, idx) => {
+          text += `${idx + 1}. ${name}\n`;
+        });
+      }
+      text += `回報時間：${formatTimeNow()}`;
+
+      smartCopyToClipboard(text, `遊覽車${isOut ? '去程' : '回程'}未上車名單`);
+    }
+
+    function copyDiningUnarrived(restaurantName) {
+      const list = rawDirectoryData.filter(i => i.restaurant === restaurantName && i.name !== '吳佩容');
+      const unarrivedPerson = list.filter(i => !checkinStore.diningPerson[i.name]).map(i => i.name);
+      
+      const busList = list.filter(i => i.trafficOut === '遊覽車' || i.trafficOut === '自處' || i.trafficOut === '自行');
+      const unarrivedBus = busList.filter(i => !checkinStore.diningBus[i.name]).map(i => i.name);
+
+      let text = `【${restaurantName} 到席回報】\n`;
+      text += `用餐入席未到（${unarrivedPerson.length}/${list.length}）：\n`;
+      if (unarrivedPerson.length === 0) {
+        text += `  ✔ 人名全員已入席就座！\n`;
+      } else {
+        unarrivedPerson.forEach((n, idx) => { text += `  ${idx + 1}. ${n}\n`; });
+      }
+
+      text += `\n遊覽車接駁未到（${unarrivedBus.length}/${busList.length}）：\n`;
+      if (unarrivedBus.length === 0) {
+        text += `  ✔ 接駁車全員已送達！\n`;
+      } else {
+        unarrivedBus.forEach((n, idx) => { text += `  ${idx + 1}. ${n}\n`; });
+      }
+      text += `\n回報時間：${formatTimeNow()}`;
+
+      smartCopyToClipboard(text, `${restaurantName} 未到席名單`);
+    }
+
+    function copyLodgingUnarrived(hotelKeyword) {
+      const hotelFull = hotelKeyword.includes('知達') ? '知達工藝會館' : '正巧文旅';
+      const list = rawDirectoryData.filter(i => i.hotel.includes(hotelKeyword) && i.name !== '彭偉峰');
+      const unarrived = list.filter(i => !checkinStore.lodgingPerson[i.name]).map(i => `${i.name} (${i.roomType})`);
+
+      let text = `【${hotelFull} 抵達點名回報（未到：${unarrived.length}/${list.length} 位）】\n`;
+      if (unarrived.length === 0) {
+        text += `✔ 全員已順利抵達會館辦理入住！\n`;
+      } else {
+        unarrived.forEach((item, idx) => {
+          text += `${idx + 1}. ${item}\n`;
+        });
+      }
+      text += `回報時間：${formatTimeNow()}`;
+
+      smartCopyToClipboard(text, `${hotelFull} 未抵達名單`);
+    }
+
+    // 兼具 Clipboard API 與行動裝置彈窗的保證複製引擎
+    function smartCopyToClipboard(text, title) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(`已複製「${title}」，可直接貼至 LINE！`, 'success');
+        }).catch(() => {
+          openCopyModal(text, title);
+        });
+      } else {
+        openCopyModal(text, title);
+      }
+    }
+
+    function openCopyModal(text, title) {
+      document.getElementById('copyModalTitle').textContent = title || 'LINE 回報名單';
+      const area = document.getElementById('copyModalTextarea');
+      area.value = text;
+      document.getElementById('copyModal').classList.remove('hidden');
+      setTimeout(() => area.select(), 50);
+    }
+
+    function closeCopyModal() {
+      document.getElementById('copyModal').classList.add('hidden');
+    }
+
+    function executeModalCopy() {
+      const area = document.getElementById('copyModalTextarea');
+      area.select();
+      try {
+        document.execCommand('copy');
+        showToast('名單文字已成功複製！', 'success');
+        closeCopyModal();
+      } catch (e) {
+        alert('請長按文字框內容手動複製。');
+      }
+    }
+
+    /* =========================================================
+       10. 密碼驗證模組與 PDF 匯出 (密碼：1223)
+       ========================================================= */
+    function requestPasswordAuth(onSuccess) {
+      pendingPasswordCallback = onSuccess;
+      const modal = document.getElementById('passwordModal');
+      const input = document.getElementById('passwordInput');
+      const err = document.getElementById('passwordErrorMsg');
+      
+      input.value = '';
+      err.classList.add('hidden');
+      modal.classList.remove('hidden');
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').classList.add('hidden');
+      document.getElementById('passwordErrorMsg').classList.add('hidden');
+    }
+
+    function submitPasswordCheck() {
+      const input = document.getElementById('passwordInput');
+      const val = input.value.trim();
+
+      if (val === '1223') {
+        const cb = pendingPasswordCallback;
+        pendingPasswordCallback = null;
+        closePasswordModal();
+
+        if (typeof cb === 'function') {
+          cb();
+        }
+      } else {
+        const err = document.getElementById('passwordErrorMsg');
+        err.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    function promptExportPDF() {
+      requestPasswordAuth(() => {
+        executePDFExport();
+      });
+    }
+
+    function executePDFExport() {
+      showToast('正在產生 PDF，請稍候...', 'info');
+
+      const container = document.getElementById('tableScrollContainer');
+      const origMaxH = container.style.maxHeight;
+      const origOverflow = container.style.overflow;
+
+      container.style.maxHeight = 'none';
+      container.style.overflow = 'visible';
+
+      const element = document.getElementById('printableContent');
+      const opt = {
+        margin: [6, 6, 6, 6],
+        filename: `重啟人生-翻轉實驗室_${currentTab}_${document.getElementById('updateTimestamp').textContent}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }
+      };
+
+      html2pdf().set(opt).from(element).save().then(() => {
+        container.style.maxHeight = origMaxH;
+        container.style.overflow = origOverflow;
+        showToast('PDF 匯出下載成功！', 'success');
+      }).catch(e => {
+        container.style.maxHeight = origMaxH;
+        container.style.overflow = origOverflow;
+        console.error('PDF Export Error:', e);
+        showToast('PDF 匯出失敗，請重試', 'error');
+      });
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = msg;
+      if (type === 'error') {
+        toast.className = 'fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-rose-600 transition-all';
+        toastIcon.className = 'fa-solid fa-triangle-exclamation text-white';
+      } else if (type === 'success') {
+        toast.className = 'fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-emerald-600 transition-all';
+        toastIcon.className = 'fa-solid fa-circle-check text-white';
+      } else {
+        toast.className = 'fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-slate-900 transition-all';
+        toastIcon.className = 'fa-solid fa-circle-info text-sky-400';
+      }
+
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2600);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>

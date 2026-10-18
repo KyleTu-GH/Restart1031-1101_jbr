@@ -423,10 +423,9 @@
       });
     }
 
-    /* ==========================================================================
-       活動流程資料（100% 精準對照母檔《1031-1101_活動規劃_接班人版》）
-       ========================================================================== */
+    /* 61 筆全員真實名冊保底資料集（與試算表《1031-1101_活動_成員資料》1:1 精確同步） */
     function initFallbackData() {
+      // 活動流程保底名冊
       rawScheduleData = [
         {
           day: '10/31 (六)',
@@ -592,7 +591,6 @@
         }
       ];
 
-      /* 61 筆全員真實名冊保底資料集（與試算表《1031-1101_活動_成員資料》1:1 精確同步） */
       const fullList = [
         { team: '綠', name: '何琇菱', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板料理', diningTraffic: '遊覽車', hotel: '知達工藝會館', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_06' },
         { team: '白', name: '吳全峰', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋台拉麵', diningTraffic: '遊覽車', hotel: '知達工藝會館', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_16' },
@@ -753,7 +751,7 @@
 
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        let day = (idxDay !== -1 ? r[idxDay] : r[0]) || '';
+        let dayRaw = (idxDay !== -1 ? r[idxDay] : r[0]) || '';
         const act = (idxAct !== -1 ? r[idxAct] : r[4]) || '';
         const startTime = (idxStart !== -1 ? r[idxStart] : r[1]) || '';
         const duration = (idxDur !== -1 ? r[idxDur] : r[2]) || '';
@@ -761,18 +759,20 @@
         const location = (idxLoc !== -1 ? r[idxLoc] : r[5]) || '';
         const note = (idxNote !== -1 ? r[idxNote] : r[6]) || '';
 
-        // 日期繼承
-        if (day) {
-          currentDay = day;
-        } else {
-          day = currentDay;
+        // 嚴格日期校驗：僅當包含日期格式特徵時才認定為新日期
+        const isLegitDay = (d) => {
+          if (!d) return false;
+          return d.includes('10/') || d.includes('11/') || d.includes('六') || d.includes('日') || d.includes('整體');
+        };
+
+        if (isLegitDay(dayRaw.trim())) {
+          currentDay = dayRaw.trim();
         }
 
-        // 過濾純空列
         if (!act && !startTime && !note) continue;
 
         rawScheduleData.push({
-          day: day.trim(),
+          day: currentDay || dayRaw.trim(),
           startTime: startTime.trim(),
           duration: duration.trim(),
           endTime: endTime.trim(),
@@ -978,7 +978,15 @@
       }).join('');
     }
 
-    /* --- [分頁2] 總表 --- */
+    /* --- [分頁2] 總表：根據「隊別」分配底色 --- */
+    function getOverviewRowBg(team) {
+      if (team === '白') return 'bg-slate-50/70 hover:bg-slate-100/80';
+      if (team === '紅') return 'bg-rose-50/70 hover:bg-rose-100/80';
+      if (team === '綠') return 'bg-emerald-50/70 hover:bg-emerald-100/80';
+      if (team === '接班人') return 'bg-amber-50/80 hover:bg-amber-100/90';
+      return 'bg-white hover:bg-slate-50';
+    }
+
     function renderOverviewTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
@@ -1051,8 +1059,10 @@
           '接班人': 'bg-amber-100 text-amber-800 border-amber-300'
         }[item.team] || 'bg-slate-50 text-slate-600 border-slate-200';
 
+        const rowBg = getOverviewRowBg(item.team);
+
         return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <tr class="${rowBg} transition border-b border-slate-200/60">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">${checkinBtnHtml}</td>
             <td class="py-2.5 px-3 font-bold text-slate-900 align-middle whitespace-nowrap">
@@ -1062,7 +1072,7 @@
             <td class="py-2.5 px-2 align-middle whitespace-nowrap">
               <span class="px-2 py-0.5 rounded-full text-[11px] border font-medium ${teamColor}">${escapeHtml(item.team || '-')}</span>
             </td>
-            <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap">${escapeHtml(item.trafficOverviewCombo || '-')}</td>
+            <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap font-medium">${escapeHtml(item.trafficOverviewCombo || '-')}</td>
             <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap">${escapeHtml(item.dining || '-')}</td>
             <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap">${escapeHtml(item.hotel || '-')} ${escapeHtml(item.roomType || '')}</td>
             <td class="py-2.5 px-3 text-slate-500 text-xs align-middle">${escapeHtml(item.roommates || '-')}</td>
@@ -1071,7 +1081,15 @@
       }).join('');
     }
 
-    /* --- [分頁3] 交通安排 --- */
+    /* --- [分頁3] 交通安排：根據「回程」交通方式使用不同底色 --- */
+    function getTrafficBackRowBg(trafficBack) {
+      if (!trafficBack) return 'bg-white hover:bg-slate-50';
+      if (trafficBack.includes('遊覽車')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
+      if (trafficBack.includes('開車')) return 'bg-amber-50/70 hover:bg-amber-100/80';
+      if (trafficBack.includes('自行') || trafficBack.includes('自處')) return 'bg-sky-50/70 hover:bg-sky-100/80';
+      return 'bg-white hover:bg-slate-50';
+    }
+
     function renderTrafficTab(thead, tbody, countBadge) {
       const busOutMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車');
       const busBackMembers = rawDirectoryData.filter(d => d.trafficBack === '遊覽車');
@@ -1205,8 +1223,10 @@
           `;
         }
 
+        const rowBg = getTrafficBackRowBg(item.trafficBack);
+
         return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <tr class="${rowBg} transition border-b border-slate-200/60">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-bold text-slate-900 align-middle whitespace-nowrap">
               ${escapeHtml(item.name)}
@@ -1220,7 +1240,16 @@
       }).join('');
     }
 
-    /* --- [分頁4] 餐飲安排 --- */
+    /* --- [分頁4] 餐飲安排：根據「餐廳名稱」使用不同底色 --- */
+    function getDiningRowBg(dining) {
+      if (!dining) return 'bg-white hover:bg-slate-50';
+      if (dining.includes('弎食')) return 'bg-rose-50/70 hover:bg-rose-100/80';
+      if (dining.includes('植田')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
+      if (dining.includes('湫禾')) return 'bg-amber-50/70 hover:bg-amber-100/80';
+      if (dining.includes('麵五三')) return 'bg-indigo-50/70 hover:bg-indigo-100/80';
+      return 'bg-white hover:bg-slate-50';
+    }
+
     function renderDiningTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
@@ -1285,8 +1314,10 @@
           `;
         }
 
+        const rowBg = getDiningRowBg(item.dining);
+
         return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <tr class="${rowBg} transition border-b border-slate-200/60">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-semibold text-slate-800 align-middle whitespace-nowrap">${escapeHtml(item.dining)}</td>
             <td class="py-2.5 px-3 align-middle whitespace-nowrap">
@@ -1336,7 +1367,14 @@
       return '';
     }
 
-    /* --- [分頁5] 住宿安排 --- */
+    /* --- [分頁5] 住宿安排：根據「住宿飯店」使用不同底色 --- */
+    function getLodgingRowBg(hotel) {
+      if (!hotel) return 'bg-white hover:bg-slate-50';
+      if (hotel.includes('知達')) return 'bg-sky-50/70 hover:bg-sky-100/80';
+      if (hotel.includes('正巧')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
+      return 'bg-white hover:bg-slate-50';
+    }
+
     function renderLodgingTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
@@ -1439,8 +1477,10 @@
           `;
         }
 
+        const rowBg = getLodgingRowBg(item.hotel);
+
         return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <tr class="${rowBg} transition border-b border-slate-200/60">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-semibold text-slate-800 align-middle whitespace-nowrap">${escapeHtml(item.hotel)}</td>
             <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">${roomInputHtml}</td>

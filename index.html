@@ -373,53 +373,35 @@
       return (a || '').localeCompare((b || ''), 'zh-Hant-TW', { collation: 'stroke' });
     }
 
-    /* ==========================================================================
-       嚴格符合 RFC 4180 標準的 CSV 解析引擎
-       徹底解決儲存格內含換行 (\n) 導致錯誤拆行的問題
-       ========================================================================== */
     function parseCSV(text) {
-      const rows = [];
-      let currentRow = [];
-      let currentField = '';
-      let insideQuote = false;
-
-      for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const nextChar = text[i + 1];
-
-        if (char === '"') {
-          if (insideQuote && nextChar === '"') {
-            currentField += '"';
-            i++; // 跳過下一個轉義引號
+      const lines = text.split(/\r\n|\n/);
+      const result = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const row = [];
+        let insideQuote = false;
+        let entry = '';
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            if (insideQuote && line[j + 1] === '"') {
+              entry += '"';
+              j++;
+            } else {
+              insideQuote = !insideQuote;
+            }
+          } else if (char === ',' && !insideQuote) {
+            row.push(entry.trim());
+            entry = '';
           } else {
-            insideQuote = !insideQuote;
+            entry += char;
           }
-        } else if (char === ',' && !insideQuote) {
-          currentRow.push(currentField);
-          currentField = '';
-        } else if ((char === '\r' || char === '\n') && !insideQuote) {
-          if (char === '\r' && nextChar === '\n') {
-            i++;
-          }
-          currentRow.push(currentField);
-          currentField = '';
-          if (currentRow.some(col => col.trim() !== '')) {
-            rows.push(currentRow);
-          }
-          currentRow = [];
-        } else {
-          currentField += char;
         }
+        row.push(entry.trim());
+        result.push(row);
       }
-
-      if (currentField !== '' || currentRow.length > 0) {
-        currentRow.push(currentField);
-        if (currentRow.some(col => col.trim() !== '')) {
-          rows.push(currentRow);
-        }
-      }
-
-      return rows;
+      return result;
     }
 
     function computeRoommates(list) {
@@ -441,172 +423,27 @@
       });
     }
 
-    /* 61 筆全員真實名冊保底資料集（與試算表《1031-1101_活動_成員資料》1:1 精確同步） */
+    /* 61 筆全員真實名冊保底資料集（與試算表正本 1:1 精確同步） */
     function initFallbackData() {
-      // 活動流程標準保底名冊
+      // 接班人版 24 項目最新流程
       rawScheduleData = [
-        {
-          day: '10/31 (六)',
-          startTime: '09:00',
-          duration: '60',
-          endTime: '10:00',
-          activity: '接駁車：高鐵台中站－正巧文旅蔬食(我們六個8:30用餐)',
-          location: '',
-          note: '- 9:00 Kyle+Yoyo 去知達 付款+領房卡\n- 事前公告+報名；公告住宿費用、提醒重啟夥伴帶「集點卡」\n- 車資：1,200/人（重啟、接班人相同）\n- 遊覽車預定 9:20發車-6號出口（車掌/長：廖培芯）\n- 確認人數，回報出車→需行政支援：勿帶葷食'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '10:00',
-          duration: '15',
-          endTime: '10:15',
-          activity: '全體集合並移動至4樓佛堂\n- 請重啟夥伴參照「午餐分組」坐定',
-          location: '正巧文旅-4樓佛堂',
-          note: '行李\n- 住宿正巧文旅：放主管辦公室\n- 住宿知達：放隔壁樓 辦公室'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '10:15',
-          duration: '60',
-          endTime: '11:15',
-          activity: '1. 本次活動說明及介紹\n投影片說明：\n餐廳去回時間，飲食注意事宜（正巧禁忌），訪談目的、訪談主題、餐廳順序、用餐人名及人員數、簡單預告回來會簡報',
-          location: '正巧文旅-4樓佛堂',
-          note: '說明：\n- 當日午餐分組、去回時間、注意事項（費用、交通）\n -- 怎麼來正巧（遊覽車、自行開車），就怎麼去餐廳\n- 午餐流程即時間下午流程、晚餐、餐後活動\n- 場地使用注意事項－嚴禁葷食、注意音量、垃圾處理\n- 佛堂空間使用規則（禁飲食、尤其是葷食），用餐時間、活動流程告知\n- 報到流程（報到單）及相關文件→需行政支援'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '11:15',
-          duration: '195',
-          endTime: '14:30',
-          activity: '重啟各組（含接班人）至不同餐廳用餐\n訪談「食五家」老闆們(K要拿住宿鑰匙<分好)',
-          location: '食五家各餐廳',
-          note: '- 以餐廳來組別已事先分配好（預計5組，每組8-13人不等）\n- 部分工作人員留守（Kate、Yoyo、田爸、培芯留下確認下午的場地與投影片）其餘接班人一同參加「餐訪」活動\n- 移動規則：怎麼來正巧，就怎麼去各餐廳\n- 搭乘遊覽車夥伴：遊覽車會沿路在4家餐廳處放人及之後接人（14:30左右）\n- 4家餐廳地址：\n -- 植田割烹：542南投縣草屯鎮敦和里信義街207號\n -- 弎食鉄板料理 草屯店：542南投縣草屯鎮敦和里碧山路652號\n -- 湫禾壽喜燒：542南投縣草屯鎮碧山路820號\n -- 麵五三屋台：542南投縣草屯鎮新庄里史館路397巷53號（田間）\n- 遊覽車\n -- 11:15 正巧出發送到四個餐廳\n -- 14:30 從四個餐廳接送回來正巧'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '14:30',
-          duration: '30',
-          endTime: '15:00',
-          activity: '回正巧文旅 集合\n- 請重啟夥伴參照「午餐分組」坐定',
-          location: '正巧文旅-4樓佛堂',
-          note: '- 移動規則：怎麼去各餐廳，就怎麼回正巧\n- 搭乘遊覽車夥伴：遊覽車會沿路在4家餐廳處接人（14:30左右）'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '15:00',
-          duration: '30',
-          endTime: '15:30',
-          activity: '重啟：活動說明\n- 12月活動\n- 分組討論規則',
-          location: '正巧文旅-4樓佛堂',
-          note: '- 12月活動及相關訊息\n\n- 全勤名單（至26/10/13止）：\n白5：吳惠君、林政緯、林慧茹、陳若雲、黃瑪琍\n紅10：李筱瑋、汪方巧、胡智容、殷燕伶、莫惠萍、陳厚任、彭偉峰、黃義涵、葉少強、潘麗婧、\n綠7：沈佳慧、張婷婷、許家倫、陳美好、陳揚舒、盧建邦、魏鈴芳\n\n- Kate 製作「頒獎影片x2段」\n -- 破題影片\n -- 入圍名單影片'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '15:30',
-          duration: '120',
-          endTime: '17:30',
-          activity: '小組討論 + 準備晚上簡報\n規則：\n1. 主題需和食五家-重啟 相關\n2. 現場空間使用注意事項\n3. 時間控制與流程(響鈴)',
-          location: '正巧文旅-4樓佛堂',
-          note: '-「簡報/表演」方式不限，各組自行發揮，主軸簡報陳述「餐訪與重啟人生相關」內容；的告知。\n- 接班人不參與討論\n- 簡報道具（海報紙、彩色筆、A4紙、膠帶、膠水、響鈴等阿裡不答全來）→需行政支援\n\n建議 16:20-17:00\n接班人內部會議（40 min)\n -- 第2屆 重啟\n -- 第4屆 接班人'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '17:30',
-          duration: '60',
-          endTime: '18:30',
-          activity: '用餐 → 用餐前提前半小時告知瀚洺',
-          location: '正巧文旅-1樓餐廳',
-          note: '- 素食合菜，10人一桌；6桌\n- 接班人打散和重啟夥伴一同用餐'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '18:30',
-          duration: '60',
-          endTime: '19:30',
-          activity: '各組午間訪談 心得分享-簡報',
-          location: '正巧文旅-4樓佛堂',
-          note: '- 每組 8 分鐘；總時長 60分鐘：鐵1 植1 壽2 拉1 共 5組\n- 主持組合：Yoyo+Kate / Kyle 支援'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '19:30',
-          duration: '105',
-          endTime: '21:15',
-          activity: '照片故事+年度分享\n說明：選最有感的，不一定是自己或有自己的\n19:30-19:45 先給時間讓大家各自選照片，每人選 3 張→分享1張心得（另2張當作紀念）\n10 min：2. 回到自己座位（簡報組）－之前，要先「憑照片領衛生紙」（Yoyo擔任衛生紙股長）\n\n20:00前_請白紅綠各分隊隊長站定位置－隊員集合\n\n20:00-21:00 照片分享\n4. 「重啟人生夥伴（接班人不分享）」跟大家分享（設定每人時間 1 分鐘）\n - 按簡報組順序，每組1人，完成一輪後再回到第1組，依此類推，目標是每人都說到話（待確認？）\n - 避免有些人說太久、或都是同群人在說\n\n21:00-21:15\n公告 目前「全勤入圍名單」+ 發放獎品（衛生紙x3 in 茄芷袋）\n\n※ 提醒所有人，明天(11/01) 09：30前 務必完成退房',
-          location: '正巧文旅-4樓佛堂',
-          note: '- 事前工作：\n-- 選+張貼有重啟活動的照片x 150 張\n-- 1月8張+3月30張+4月30張+6月60張+8月22張\n-- 委請 豐說團隊幫挑 133 片→需行政支援\n--- 選片條件：報名10/31的重啟夥伴都有在裡頭、或不要有任何重啟夥伴被漏掉\n--- 各照片逐張編號（001-150）後，發電子檔給 Yoyo→幫洗出實體照片（6x8）\n--- 10/18（日）取得實體照片（3元/張）\n\n- 當天活動\n-- 重啟夥伴原地站起分享：「我要分享的是88號照片」；控制台可立即播放照片\n\n- 主持組合：Yoyo+Kate（Kyle支援）'
-        },
-        {
-          day: '10/31 (六)',
-          startTime: '21:15',
-          duration: '20',
-          endTime: '21:35',
-          activity: '活動結束\n知達住宿組 回 知達工藝中心',
-          location: '',
-          note: '- 接班人，Yoyo和Kyle會 住宿 知達（停車？）\n- 知達組約40人 的交通安排→遊覽車接送'
-        },
-        {
-          day: '11/01 (日)',
-          startTime: '09:30',
-          duration: '30',
-          endTime: '10:00',
-          activity: '集合\n- 集合前，全體人員（正巧及知達）請均先完成退房',
-          location: '正巧文旅-4樓佛堂',
-          note: '- 正巧文旅及知達都先退房\n- 行李放旁邊會館（翰茗辦公室）\n- 按「各戰隊」坐定\n- 知達組約40人 的交通安排→遊覽車 9:30 出發 往 正巧'
-        },
-        {
-          day: '11/01 (日)',
-          startTime: '10:00',
-          duration: '90',
-          endTime: '11:30',
-          activity: 'Kate+Kyle：腦筋急轉彎＋無路之路（投影片）\n雙美噹凱噁（無路用的男人/找不到路的男人）介紹凱噁出場\n\n按各戰隊坐：\n10:00-10:40 \n反思 過去一年重啟人生－4個問題（=原瓶中信問題）\n\n10:40-11:00 \n抬出藏寶箱及分發 瓶中信（尋人啟事！）\n\n11:00-11:30\n比較年初和現在的自己後，四道：道謝、道愛、道歉、道別\n - 對象：自己；同戰隊夥伴、某項活動中的某些人事物、某人（1分鐘/人）',
-          location: '正巧文旅-4樓佛堂',
-          note: '- 主持：Kyle（Yoyo+Kate支援；活動細部說明：https://reurl.cc/90ydka）\n\n1. 瓶中信（含藏寶箱，按戰隊分類好－10/30 就藏佛堂）\n2. 製作「新版 瓶中信」問題（紙+筆）→需行政支援/發放原瓶中信'
-        },
-        {
-          day: '11/01 (日)',
-          startTime: '11:30',
-          duration: '10',
-          endTime: '11:40',
-          activity: '頒發 都蘭冠軍隊T恤',
-          location: '正巧文旅-4樓佛堂',
-          note: ''
-        },
-        {
-          day: '11/01 (日)',
-          startTime: '11:40',
-          duration: '15',
-          endTime: '11:55',
-          activity: 'Kte+Yoy介紹憲哥：以「吃大便開場，衛生紙結尾」\n憲哥獻給大家的祝福（Kate通知瀚茗30分鐘後用餐）\n\n（憲哥結束後，凱噁說明以下流程）',
-          location: '正巧文旅-4樓佛堂',
-          note: '12/20 頒發全勤'
-        },
-        {
-          day: '11/01 (日)',
-          startTime: '11:55',
-          duration: '65',
-          endTime: '13:00',
-          activity: '用餐',
-          location: '正巧文旅-1樓餐廳',
-          note: '正巧文旅可支援便當（預算 100-200元之間）'
-        },
-        {
-          day: '11/01 (日)',
-          startTime: '13:00',
-          duration: '30',
-          endTime: '13:30',
-          activity: '接班人送客\n- 用餐完畢者，先取出自己行李\n- 接駁車：正巧文旅蔬食－高鐵台中站－最遲 13:30 發車',
-          location: '正巧文旅-外部草地空間',
-          note: '接班人一樓列隊歡送上車，莫文蔚的隊歌（這世界那麼多人）。\nYKK 三個前面，翻歌詞（一句一句印出，12/20再相見）。'
-        },
-        {
-          day: '整體規劃',
-          startTime: '',
-          duration: '',
-          endTime: '',
-          activity: '遊覽車',
-          location: '',
-          note: '遊覽車36人（培芯車長）\n\n10/31 \n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 9:30知達送到正巧\n- 13:30正巧出發到台中高鐵'
-        }
+        { day: '10/31 (六)', startTime: '09:00', endTime: '10:00', duration: '60分', location: '台中高鐵站', activity: '接駁車（台中高鐵出發）', note: '• 09:20 準時發車，逾時不候\n• 車長廖培芯現場點名與協助' },
+        { day: '10/31 (六)', startTime: '10:00', endTime: '10:15', duration: '15分', location: '正巧文旅-4樓佛堂', activity: '集合與安頓行李', note: '全員報到與場地引導' },
+        { day: '10/31 (六)', startTime: '10:15', endTime: '11:15', duration: '60分', location: '正巧文旅-4樓佛堂', activity: '活動說明及介紹', note: '流程指引與目標凝聚' },
+        { day: '10/31 (六)', startTime: '11:15', endTime: '14:30', duration: '195分', location: '食五家各餐廳', activity: '用餐與各店家訪談', note: '• 11:15 正巧發車接送至4家餐廳\n• 14:30 遊覽車接回正巧文旅' },
+        { day: '10/31 (六)', startTime: '14:30', endTime: '15:00', duration: '30分', location: '正巧文旅-4樓佛堂', activity: '回正巧文旅 集合', note: '小憩與心得沈澱' },
+        { day: '10/31 (六)', startTime: '15:00', endTime: '15:30', duration: '30分', location: '正巧文旅-4樓佛堂', activity: '活動說明', note: '12月活動與分組規則說明' },
+        { day: '10/31 (六)', startTime: '15:30', endTime: '17:30', duration: '120分', location: '正巧文旅-4樓佛堂', activity: '小組討論', note: '準備晚上簡報內容與發表架構' },
+        { day: '10/31 (六)', startTime: '17:30', endTime: '18:30', duration: '60分', location: '正巧文旅-1樓餐廳', activity: '正巧文旅 晚餐', note: '精緻素食合菜交流' },
+        { day: '10/31 (六)', startTime: '18:30', endTime: '19:30', duration: '60分', location: '正巧文旅-4樓佛堂', activity: '午間訪談心得分享', note: '各店家訪談觀察簡報' },
+        { day: '10/31 (六)', startTime: '19:30', endTime: '21:15', duration: '105分', location: '正巧文旅-4樓佛堂', activity: '照片故事 + 年度分享', note: '照片心得故事，全勤入圍公告與頒發衛生紙' },
+        { day: '10/31 (六)', startTime: '21:15', endTime: '21:35', duration: '20分', location: '正巧文旅→知達會館', activity: '知達住宿組 回知達工藝中心', note: '接駁知達住宿夥伴返回會館休息' },
+        { day: '11/01 (日)', startTime: '09:30', endTime: '10:00', duration: '30分', location: '知達工藝中心', activity: '退房與集合', note: '• 9:30 知達退房搭遊覽車至正巧\n• 正巧組 9:45 退房集合' },
+        { day: '11/01 (日)', startTime: '10:00', endTime: '11:30', duration: '90分', location: '正巧文旅-4樓佛堂', activity: '反思與瓶中信', note: '深度省思與心靈沉澱' },
+        { day: '11/01 (日)', startTime: '11:30', endTime: '11:40', duration: '10分', location: '正巧文旅-4樓佛堂', activity: '頒發都蘭冠軍隊 T 恤', note: '榮耀頒獎與紀念' },
+        { day: '11/01 (日)', startTime: '11:40', endTime: '11:55', duration: '15分', location: '正巧文旅-4樓佛堂', activity: '憲哥祝福', note: '導師總結勉勵' },
+        { day: '11/01 (日)', startTime: '11:55', endTime: '13:00', duration: '65分', location: '正巧文旅-1樓餐廳', activity: '正巧文旅 用餐', note: '感恩午宴交流' },
+        { day: '11/01 (日)', startTime: '13:00', endTime: '13:30', duration: '30分', location: '正巧文旅-草地', activity: '接班人送客', note: '道別賦歸，最遲 13:30 遊覽車發車往台中高鐵' }
       ];
 
       const fullList = [
@@ -765,38 +602,19 @@
       const idxNote = headers.findIndex(h => h.includes('說明') || h.includes('備註'));
 
       rawScheduleData = [];
-      let currentDay = '';
-
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        let dayRaw = (idxDay !== -1 ? r[idxDay] : r[0]) || '';
         const act = (idxAct !== -1 ? r[idxAct] : r[4]) || '';
-        const startTime = (idxStart !== -1 ? r[idxStart] : r[1]) || '';
-        const duration = (idxDur !== -1 ? r[idxDur] : r[2]) || '';
-        const endTime = (idxEnd !== -1 ? r[idxEnd] : r[3]) || '';
-        const location = (idxLoc !== -1 ? r[idxLoc] : r[5]) || '';
-        const note = (idxNote !== -1 ? r[idxNote] : r[6]) || '';
-
-        // 嚴格日期判斷式：只允許包含合法日期特徵之文字
-        const isLegitDay = (d) => {
-          if (!d) return false;
-          return d.includes('10/') || d.includes('11/') || d.includes('六') || d.includes('日') || d.includes('整體');
-        };
-
-        if (isLegitDay(dayRaw.trim())) {
-          currentDay = dayRaw.trim();
-        }
-
-        if (!act && !startTime && !note) continue;
+        if (!act) continue;
 
         rawScheduleData.push({
-          day: currentDay || (isLegitDay(dayRaw.trim()) ? dayRaw.trim() : ''),
-          startTime: startTime.trim(),
-          duration: duration.trim(),
-          endTime: endTime.trim(),
-          activity: act.trim(),
-          location: location.trim(),
-          note: note.trim()
+          day: (idxDay !== -1 ? r[idxDay] : r[0]) || '',
+          startTime: (idxStart !== -1 ? r[idxStart] : r[1]) || '',
+          endTime: (idxEnd !== -1 ? r[idxEnd] : r[3]) || '',
+          duration: (idxDur !== -1 ? r[idxDur] : r[2]) || '',
+          location: (idxLoc !== -1 ? r[idxLoc] : r[5]) || '',
+          activity: act,
+          note: (idxNote !== -1 ? r[idxNote] : r[6]) || ''
         });
       }
     }
@@ -927,16 +745,13 @@
       }
     }
 
-    /* 時間格式標準 HH:mm 單行呈現（不折行） */
-    function formatStandardTime(timeStr) {
-      if (!timeStr) return '-';
-      const clean = timeStr.trim();
-      if (!clean) return '-';
-      // 若為 9:00 自動補零為 09:00
-      if (/^\d:\d{2}$/.test(clean)) {
-        return `0${clean}`;
+    function formatTimeSplit(timeStr) {
+      if (!timeStr) return '';
+      if (timeStr.includes(':')) {
+        const parts = timeStr.split(':');
+        return `<div class="leading-tight"><span class="font-bold">${parts[0]}:</span><span class="block text-[11px] text-slate-500 font-mono">${parts[1]}</span></div>`;
       }
-      return clean;
+      return `<span class="font-bold">${timeStr}</span>`;
     }
 
     /* --- [分頁1] 活動流程 --- */
@@ -944,10 +759,10 @@
       thead.innerHTML = `
         <tr>
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
-          <th class="py-2.5 px-2 w-24 whitespace-nowrap">日期</th>
-          <th class="py-2.5 px-2 w-16 text-center whitespace-nowrap">起時</th>
-          <th class="py-2.5 px-2 w-16 text-center whitespace-nowrap">迄時</th>
-          <th class="py-2.5 px-2 w-14 text-center whitespace-nowrap">時長</th>
+          <th class="py-2.5 px-2 w-20">日期</th>
+          <th class="py-2.5 px-1.5 w-10 text-center">起時</th>
+          <th class="py-2.5 px-1.5 w-10 text-center">迄時</th>
+          <th class="py-2.5 px-2 w-14 text-center">時長</th>
           <th class="py-2.5 px-2 w-28 break-words">地點</th>
           <th class="py-2.5 px-3 w-[230px] max-w-[16rem]">活動</th>
           <th class="py-2.5 px-3 min-w-[16rem] flex-1">說明</th>
@@ -972,12 +787,6 @@
       }
 
       tbody.innerHTML = filtered.map((item, idx) => {
-        const formattedAct = (item.activity || '')
-          .split('\n')
-          .filter(l => l.trim())
-          .map(l => `<div class="leading-relaxed py-0.5">${escapeHtml(l)}</div>`)
-          .join('');
-
         const formattedNote = (item.note || '')
           .split('\n')
           .filter(l => l.trim())
@@ -986,28 +795,20 @@
 
         return `
           <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-            <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-top">${idx + 1}</td>
-            <td class="py-2.5 px-2 font-semibold text-slate-800 whitespace-nowrap align-top">${escapeHtml(item.day)}</td>
-            <td class="py-2.5 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-slate-900">${formatStandardTime(item.startTime)}</td>
-            <td class="py-2.5 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-slate-900">${formatStandardTime(item.endTime)}</td>
-            <td class="py-2.5 px-2 text-center text-slate-500 font-mono align-top whitespace-nowrap">${escapeHtml(item.duration ? `${item.duration}分` : '-')}</td>
-            <td class="py-2.5 px-2 text-slate-700 break-words leading-snug align-top">${escapeHtml(item.location || '-')}</td>
-            <td class="py-2.5 px-3 text-slate-900 font-bold text-sm break-words align-top leading-snug">${formattedAct}</td>
-            <td class="py-2.5 px-3 text-slate-700 text-sm align-top">${formattedNote}</td>
+            <td class="py-2 px-2 text-center text-slate-400 font-mono text-[11px] align-top">${idx + 1}</td>
+            <td class="py-2 px-2 font-medium text-slate-700 whitespace-nowrap align-top">${escapeHtml(item.day)}</td>
+            <td class="py-2 px-1 text-center align-top whitespace-nowrap">${formatTimeSplit(item.startTime)}</td>
+            <td class="py-2 px-1 text-center align-top whitespace-nowrap">${formatTimeSplit(item.endTime)}</td>
+            <td class="py-2 px-2 text-center text-slate-500 font-mono align-top whitespace-nowrap">${escapeHtml(item.duration)}</td>
+            <td class="py-2 px-2 text-slate-700 break-words leading-snug align-top">${escapeHtml(item.location)}</td>
+            <td class="py-2 px-3 text-slate-900 font-bold text-sm break-words align-top leading-snug">${escapeHtml(item.activity)}</td>
+            <td class="py-2 px-3 text-slate-700 text-sm align-top">${formattedNote}</td>
           </tr>
         `;
       }).join('');
     }
 
-    /* --- [分頁2] 總表：根據「隊別」分配底色 --- */
-    function getOverviewRowBg(team) {
-      if (team === '白') return 'bg-slate-50/70 hover:bg-slate-100/80';
-      if (team === '紅') return 'bg-rose-50/70 hover:bg-rose-100/80';
-      if (team === '綠') return 'bg-emerald-50/70 hover:bg-emerald-100/80';
-      if (team === '接班人') return 'bg-amber-50/80 hover:bg-amber-100/90';
-      return 'bg-white hover:bg-slate-50';
-    }
-
+    /* --- [分頁2] 總表 --- */
     function renderOverviewTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
@@ -1080,10 +881,8 @@
           '接班人': 'bg-amber-100 text-amber-800 border-amber-300'
         }[item.team] || 'bg-slate-50 text-slate-600 border-slate-200';
 
-        const rowBg = getOverviewRowBg(item.team);
-
         return `
-          <tr class="${rowBg} transition border-b border-slate-200/60">
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">${checkinBtnHtml}</td>
             <td class="py-2.5 px-3 font-bold text-slate-900 align-middle whitespace-nowrap">
@@ -1093,7 +892,7 @@
             <td class="py-2.5 px-2 align-middle whitespace-nowrap">
               <span class="px-2 py-0.5 rounded-full text-[11px] border font-medium ${teamColor}">${escapeHtml(item.team || '-')}</span>
             </td>
-            <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap font-medium">${escapeHtml(item.trafficOverviewCombo || '-')}</td>
+            <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap">${escapeHtml(item.trafficOverviewCombo || '-')}</td>
             <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap">${escapeHtml(item.dining || '-')}</td>
             <td class="py-2.5 px-3 text-slate-700 align-middle whitespace-nowrap">${escapeHtml(item.hotel || '-')} ${escapeHtml(item.roomType || '')}</td>
             <td class="py-2.5 px-3 text-slate-500 text-xs align-middle">${escapeHtml(item.roommates || '-')}</td>
@@ -1102,15 +901,7 @@
       }).join('');
     }
 
-    /* --- [分頁3] 交通安排：根據「回程」交通方式使用不同底色 --- */
-    function getTrafficBackRowBg(trafficBack) {
-      if (!trafficBack) return 'bg-white hover:bg-slate-50';
-      if (trafficBack.includes('遊覽車')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
-      if (trafficBack.includes('開車')) return 'bg-amber-50/70 hover:bg-amber-100/80';
-      if (trafficBack.includes('自行') || trafficBack.includes('自處')) return 'bg-sky-50/70 hover:bg-sky-100/80';
-      return 'bg-white hover:bg-slate-50';
-    }
-
+    /* --- [分頁3] 交通安排 --- */
     function renderTrafficTab(thead, tbody, countBadge) {
       const busOutMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車');
       const busBackMembers = rawDirectoryData.filter(d => d.trafficBack === '遊覽車');
@@ -1244,10 +1035,8 @@
           `;
         }
 
-        const rowBg = getTrafficBackRowBg(item.trafficBack);
-
         return `
-          <tr class="${rowBg} transition border-b border-slate-200/60">
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-bold text-slate-900 align-middle whitespace-nowrap">
               ${escapeHtml(item.name)}
@@ -1261,16 +1050,7 @@
       }).join('');
     }
 
-    /* --- [分頁4] 餐飲安排：根據「餐廳名稱」使用不同底色 --- */
-    function getDiningRowBg(dining) {
-      if (!dining) return 'bg-white hover:bg-slate-50';
-      if (dining.includes('弎食')) return 'bg-rose-50/70 hover:bg-rose-100/80';
-      if (dining.includes('植田')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
-      if (dining.includes('湫禾')) return 'bg-amber-50/70 hover:bg-amber-100/80';
-      if (dining.includes('麵五三')) return 'bg-indigo-50/70 hover:bg-indigo-100/80';
-      return 'bg-white hover:bg-slate-50';
-    }
-
+    /* --- [分頁4] 餐飲安排 --- */
     function renderDiningTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
@@ -1335,10 +1115,8 @@
           `;
         }
 
-        const rowBg = getDiningRowBg(item.dining);
-
         return `
-          <tr class="${rowBg} transition border-b border-slate-200/60">
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-semibold text-slate-800 align-middle whitespace-nowrap">${escapeHtml(item.dining)}</td>
             <td class="py-2.5 px-3 align-middle whitespace-nowrap">
@@ -1388,14 +1166,7 @@
       return '';
     }
 
-    /* --- [分頁5] 住宿安排：根據「住宿飯店」使用不同底色 --- */
-    function getLodgingRowBg(hotel) {
-      if (!hotel) return 'bg-white hover:bg-slate-50';
-      if (hotel.includes('知達')) return 'bg-sky-50/70 hover:bg-sky-100/80';
-      if (hotel.includes('正巧')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
-      return 'bg-white hover:bg-slate-50';
-    }
-
+    /* --- [分頁5] 住宿安排 --- */
     function renderLodgingTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
@@ -1498,10 +1269,8 @@
           `;
         }
 
-        const rowBg = getLodgingRowBg(item.hotel);
-
         return `
-          <tr class="${rowBg} transition border-b border-slate-200/60">
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-semibold text-slate-800 align-middle whitespace-nowrap">${escapeHtml(item.hotel)}</td>
             <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">${roomInputHtml}</td>
@@ -1579,7 +1348,7 @@
         text += unpaidList.map((d, i) => `${i + 1}. ${d.name}`).join('\n') + '\n';
       }
 
-      text += `\n`;
+      text += `\n`; // 中間留空 1 行以便辨識
 
       text += `【已收費人員名單】 (${paidList.length}位)\n`;
       if (paidList.length === 0) {

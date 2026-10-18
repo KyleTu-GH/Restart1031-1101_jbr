@@ -425,7 +425,7 @@
 
     /* 61 筆全員真實名冊保底資料集（與試算表正本 1:1 精確同步） */
     function initFallbackData() {
-      // 最新接班人版 24 項目流程
+      // 接班人版 24 項目最新流程
       rawScheduleData = [
         { day: '10/31 (六)', startTime: '09:00', endTime: '10:00', duration: '60分', location: '台中高鐵站', activity: '接駁車（台中高鐵出發）', note: '• 09:20 準時發車，逾時不候\n• 車長廖培芯現場點名與協助' },
         { day: '10/31 (六)', startTime: '10:00', endTime: '10:15', duration: '15分', location: '正巧文旅-4樓佛堂', activity: '集合與安頓行李', note: '全員報到與場地引導' },
@@ -926,7 +926,7 @@
           </th>
           <th class="py-2.5 px-2 w-28 text-center whitespace-nowrap">
             <div class="whitespace-nowrap">
-              <span class="text-slate-800 font-bold">旅責險 (140元)</span>
+              <span class="text-slate-800 font-bold">旅責險 (100元)</span>
               <span class="block text-[11px] font-normal text-slate-500 leading-tight">已收：${insurancePaid}/${busInsuranceMembers.length}</span>
             </div>
           </th>
@@ -1301,6 +1301,9 @@
       return false;
     }
 
+    /* ==========================================================================
+       複製回報功能 (LINE 友善格式，最上方加註 yy/mm/dd HH:mm)
+       ========================================================================== */
     function copyToClipboard(text) {
       navigator.clipboard.writeText(text).then(() => {
         alert('名單已成功複製到剪貼簿，可直接貼入 LINE！');
@@ -1333,14 +1336,29 @@
     function copyInsuranceStatus() {
       const now = getNowFormatted();
       const busMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車' || d.trafficBack === '遊覽車');
+      
+      const unpaidList = busMembers.filter(d => (checkinStore.trafficInsurance[d.name] || '尚未繳') === '尚未繳');
       const paidList = busMembers.filter(d => (checkinStore.trafficInsurance[d.name] || '尚未繳') !== '尚未繳');
 
-      let text = `時間：${now}\n【遊覽車旅責險(140元)繳費狀況】\n`;
-      text += `已繳進度：${paidList.length} / ${busMembers.length} 位\n\n`;
-      text += busMembers.map((d, i) => {
-        const st = checkinStore.trafficInsurance[d.name] || '尚未繳';
-        return `${i + 1}. ${d.name}：${st}`;
-      }).join('\n');
+      let text = `時間：${now}\n【遊覽車旅責險(100元)繳費狀況】\n\n`;
+      text += `【尚未繳費名單】 (${unpaidList.length}位)\n`;
+      if (unpaidList.length === 0) {
+        text += `（無，全員皆已完成繳費）\n`;
+      } else {
+        text += unpaidList.map((d, i) => `${i + 1}. ${d.name}`).join('\n') + '\n';
+      }
+
+      text += `\n`; // 中間留空 1 行以便辨識
+
+      text += `【已收費人員名單】 (${paidList.length}位)\n`;
+      if (paidList.length === 0) {
+        text += `（尚無人完成收費）`;
+      } else {
+        text += paidList.map((d, i) => {
+          const method = checkinStore.trafficInsurance[d.name] || '已繳';
+          return `${i + 1}. ${d.name}（${method}）`;
+        }).join('\n');
+      }
 
       copyToClipboard(text);
     }

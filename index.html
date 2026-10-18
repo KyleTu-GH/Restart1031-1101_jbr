@@ -118,9 +118,9 @@
           <i class="fa-solid fa-clipboard-check text-emerald-600"></i>
           <span>大會報到進度：<strong id="overviewCheckinStats" class="text-emerald-700 font-bold">0 / 0</strong> 位</span>
         </div>
-        <button onclick="copyOverviewUnchecked()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
+        <button onclick="copyOverviewAttendance()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
           <i class="fa-regular fa-copy"></i>
-          <span>複製未報到名單至 LINE</span>
+          <span>複製報到名單</span>
         </button>
       </div>
 
@@ -162,8 +162,8 @@
             車長：<strong>李筱瑋</strong> ｜ 領談員：<strong>林珊汝</strong><br>
             進度：<strong id="diningProgress-弎食">0 / 0</strong>
           </div>
-          <button onclick="copyDiningUnarrived('弎食')" class="w-full py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 rounded font-semibold text-[11px] shadow-2xs transition">
-            <i class="fa-regular fa-copy"></i> 複製弎食未到名單
+          <button onclick="copyDiningAttendance('弎食')" class="w-full py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 rounded font-semibold text-[11px] shadow-2xs transition">
+            <i class="fa-regular fa-copy"></i> 複製弎食名單
           </button>
         </div>
 
@@ -181,8 +181,8 @@
             車長：<strong>胡靖韋</strong> ｜ 領談員：<strong>范永銀</strong><br>
             進度：<strong id="diningProgress-植田">0 / 0</strong>
           </div>
-          <button onclick="copyDiningUnarrived('植田')" class="w-full py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded font-semibold text-[11px] shadow-2xs transition">
-            <i class="fa-regular fa-copy"></i> 複製植田未到名單
+          <button onclick="copyDiningAttendance('植田')" class="w-full py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded font-semibold text-[11px] shadow-2xs transition">
+            <i class="fa-regular fa-copy"></i> 複製植田名單
           </button>
         </div>
 
@@ -200,8 +200,8 @@
             車長：<strong>莫惠萍</strong> ｜ 領談員：<strong>梁懷貞、洪淑姮</strong><br>
             進度：<strong id="diningProgress-湫禾">0 / 0</strong>
           </div>
-          <button onclick="copyDiningUnarrived('湫禾')" class="w-full py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded font-semibold text-[11px] shadow-2xs transition">
-            <i class="fa-regular fa-copy"></i> 複製湫禾未到名單
+          <button onclick="copyDiningAttendance('湫禾')" class="w-full py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded font-semibold text-[11px] shadow-2xs transition">
+            <i class="fa-regular fa-copy"></i> 複製湫禾名單
           </button>
         </div>
 
@@ -219,8 +219,8 @@
             車長：<strong>吳全峰</strong> ｜ 領談員：<strong>杜志峰</strong><br>
             進度：<strong id="diningProgress-麵五三">0 / 0</strong>
           </div>
-          <button onclick="copyDiningUnarrived('麵五三')" class="w-full py-1 bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded font-semibold text-[11px] shadow-2xs transition">
-            <i class="fa-regular fa-copy"></i> 複製麵五三未到名單
+          <button onclick="copyDiningAttendance('麵五三')" class="w-full py-1 bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded font-semibold text-[11px] shadow-2xs transition">
+            <i class="fa-regular fa-copy"></i> 複製麵五三名單
           </button>
         </div>
       </div>
@@ -241,8 +241,8 @@
           <div class="text-sky-900 text-[11px]">
             TEL：049-2306969 ｜ 抵達進度：<strong id="lodgingProgress-知達">0 / 0</strong> 位
           </div>
-          <button onclick="copyLodgingUnarrived('知達')" class="py-1 bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded font-semibold text-[11px] shadow-2xs transition">
-            <i class="fa-regular fa-copy"></i> 複製知達未抵達名單
+          <button onclick="copyLodgingAttendance('知達')" class="py-1 bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded font-semibold text-[11px] shadow-2xs transition">
+            <i class="fa-regular fa-copy"></i> 複製知達名單
           </button>
         </div>
 
@@ -260,8 +260,8 @@
           <div class="text-emerald-900 text-[11px]">
             TEL：049-2357166 ｜ 抵達進度：<strong id="lodgingProgress-正巧">0 / 0</strong> 位
           </div>
-          <button onclick="copyLodgingUnarrived('正巧')" class="py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded font-semibold text-[11px] shadow-2xs transition">
-            <i class="fa-regular fa-copy"></i> 複製正巧未抵達名單
+          <button onclick="copyLodgingAttendance('正巧')" class="py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded font-semibold text-[11px] shadow-2xs transition">
+            <i class="fa-regular fa-copy"></i> 複製正巧名單
           </button>
         </div>
       </div>
@@ -373,10 +373,7 @@
       return (a || '').localeCompare((b || ''), 'zh-Hant-TW', { collation: 'stroke' });
     }
 
-    /* ==========================================================================
-       嚴格符合 RFC 4180 標準的 CSV 解析引擎
-       徹底解決儲存格內含換行 (\n) 導致錯誤拆行的問題
-       ========================================================================== */
+    /* 嚴格 RFC 4180 CSV 狀態機解析引擎 */
     function parseCSV(text) {
       const rows = [];
       let currentRow = [];
@@ -390,7 +387,7 @@
         if (char === '"') {
           if (insideQuote && nextChar === '"') {
             currentField += '"';
-            i++; // 跳過下一個轉義引號
+            i++;
           } else {
             insideQuote = !insideQuote;
           }
@@ -777,7 +774,6 @@
         const location = (idxLoc !== -1 ? r[idxLoc] : r[5]) || '';
         const note = (idxNote !== -1 ? r[idxNote] : r[6]) || '';
 
-        // 嚴格日期判斷式：只允許包含合法日期特徵之文字
         const isLegitDay = (d) => {
           if (!d) return false;
           return d.includes('10/') || d.includes('11/') || d.includes('六') || d.includes('日') || d.includes('整體');
@@ -927,12 +923,10 @@
       }
     }
 
-    /* 時間格式標準 HH:mm 單行呈現（不折行） */
     function formatStandardTime(timeStr) {
       if (!timeStr) return '-';
       const clean = timeStr.trim();
       if (!clean) return '-';
-      // 若為 9:00 自動補零為 09:00
       if (/^\d:\d{2}$/.test(clean)) {
         return `0${clean}`;
       }
@@ -1549,21 +1543,34 @@
       });
     }
 
-    function copyOverviewUnchecked() {
+    /* --- [總表] 複製報到名單 --- */
+    function copyOverviewAttendance() {
       const now = getNowFormatted();
       const selfList = rawDirectoryData.filter(d => d.relation === '本人');
       const unarrived = selfList.filter(d => !checkinStore.overview[d.name]);
+      const arrived = selfList.filter(d => !!checkinStore.overview[d.name]);
 
-      let text = `時間：${now}\n【大會報到-未報到名單】\n`;
-      text += `未報到人數：${unarrived.length} / ${selfList.length} 位\n\n`;
+      let text = `時間：${now}\n【大會報到名單】\n\n`;
+      text += `【尚未報到名單】 (${unarrived.length}位)\n`;
       if (unarrived.length === 0) {
-        text += `全員皆已完成報到！🎉`;
+        text += `（無，全員皆已完成報到！）🎉\n`;
       } else {
-        text += unarrived.map((d, i) => `${i + 1}. ${d.name} (${d.team}隊)`).join('\n');
+        text += unarrived.map((d, i) => `${i + 1}. ${d.name} (${d.team}隊)`).join('\n') + '\n';
       }
+
+      text += `\n`; // 中間留空 1 行以示區別
+
+      text += `【已報到人員名單】 (${arrived.length}位)\n`;
+      if (arrived.length === 0) {
+        text += `（尚無人完成報到）`;
+      } else {
+        text += arrived.map((d, i) => `${i + 1}. ${d.name} (${d.team}隊)`).join('\n');
+      }
+
       copyToClipboard(text);
     }
 
+    /* --- [交通] 複製旅責險繳費狀況 --- */
     function copyInsuranceStatus() {
       const now = getNowFormatted();
       const busMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車' || d.trafficBack === '遊覽車');
@@ -1594,6 +1601,7 @@
       copyToClipboard(text);
     }
 
+    /* --- [交通] 複製去程 / 回程名單 --- */
     function copyTrafficAll(direction) {
       const now = getNowFormatted();
       const isOut = (direction === 'out');
@@ -1625,33 +1633,57 @@
       copyToClipboard(text);
     }
 
-    function copyDiningUnarrived(restaurant) {
+    /* --- [餐飲] 複製該餐廳名單 --- */
+    function copyDiningAttendance(restaurant) {
       const now = getNowFormatted();
       const members = rawDirectoryData.filter(d => (d.dining || '').includes(restaurant));
       const unarrived = members.filter(d => !checkinStore.dining[d.name]);
+      const arrived = members.filter(d => !!checkinStore.dining[d.name]);
 
-      let text = `時間：${now}\n【${restaurant}-未入席名單】\n`;
-      text += `未入席人數：${unarrived.length} / ${members.length} 位\n\n`;
+      let text = `時間：${now}\n【${restaurant}用餐名單】\n\n`;
+      text += `【未入席人員名單】 (${unarrived.length}位)\n`;
       if (unarrived.length === 0) {
-        text += `全員皆已入席用餐！`;
+        text += `（無，全員皆已入席用餐！）\n`;
       } else {
-        text += unarrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+        text += unarrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n') + '\n';
       }
+
+      text += `\n`; // 中間留空 1 行以示區別
+
+      text += `【已入席人員名單】 (${arrived.length}位)\n`;
+      if (arrived.length === 0) {
+        text += `（尚無人入席）`;
+      } else {
+        text += arrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+      }
+
       copyToClipboard(text);
     }
 
-    function copyLodgingUnarrived(hotel) {
+    /* --- [住宿] 複製該住宿點名單 --- */
+    function copyLodgingAttendance(hotel) {
       const now = getNowFormatted();
       const members = rawDirectoryData.filter(d => (d.hotel || '').includes(hotel));
       const unarrived = members.filter(d => !checkinStore.lodging[d.name]);
+      const arrived = members.filter(d => !!checkinStore.lodging[d.name]);
 
-      let text = `時間：${now}\n【${hotel}-未抵達名單】\n`;
-      text += `未抵達人數：${unarrived.length} / ${members.length} 位\n\n`;
+      let text = `時間：${now}\n【${hotel}住宿名單】\n\n`;
+      text += `【未抵達人員名單】 (${unarrived.length}位)\n`;
       if (unarrived.length === 0) {
-        text += `全員皆已順利抵達飯店！`;
+        text += `（無，全員皆已順利抵達飯店！）\n`;
       } else {
-        text += unarrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+        text += unarrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n') + '\n';
       }
+
+      text += `\n`; // 中間留空 1 行以示區別
+
+      text += `【已抵達人員名單】 (${arrived.length}位)\n`;
+      if (arrived.length === 0) {
+        text += `（尚無人抵達）`;
+      } else {
+        text += arrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+      }
+
       copyToClipboard(text);
     }
 

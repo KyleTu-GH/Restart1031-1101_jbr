@@ -373,35 +373,53 @@
       return (a || '').localeCompare((b || ''), 'zh-Hant-TW', { collation: 'stroke' });
     }
 
+    /* ==========================================================================
+       嚴格符合 RFC 4180 標準的 CSV 解析引擎
+       徹底解決儲存格內含換行 (\n) 導致錯誤拆行的問題
+       ========================================================================== */
     function parseCSV(text) {
-      const lines = text.split(/\r\n|\n/);
-      const result = [];
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line && i === lines.length - 1) continue;
-        const row = [];
-        let insideQuote = false;
-        let entry = '';
-        for (let j = 0; j < line.length; j++) {
-          const char = line[j];
-          if (char === '"') {
-            if (insideQuote && line[j + 1] === '"') {
-              entry += '"';
-              j++;
-            } else {
-              insideQuote = !insideQuote;
-            }
-          } else if (char === ',' && !insideQuote) {
-            row.push(entry.trim());
-            entry = '';
+      const rows = [];
+      let currentRow = [];
+      let currentField = '';
+      let insideQuote = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"') {
+          if (insideQuote && nextChar === '"') {
+            currentField += '"';
+            i++; // 跳過下一個轉義引號
           } else {
-            entry += char;
+            insideQuote = !insideQuote;
           }
+        } else if (char === ',' && !insideQuote) {
+          currentRow.push(currentField);
+          currentField = '';
+        } else if ((char === '\r' || char === '\n') && !insideQuote) {
+          if (char === '\r' && nextChar === '\n') {
+            i++;
+          }
+          currentRow.push(currentField);
+          currentField = '';
+          if (currentRow.some(col => col.trim() !== '')) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+        } else {
+          currentField += char;
         }
-        row.push(entry.trim());
-        result.push(row);
       }
-      return result;
+
+      if (currentField !== '' || currentRow.length > 0) {
+        currentRow.push(currentField);
+        if (currentRow.some(col => col.trim() !== '')) {
+          rows.push(currentRow);
+        }
+      }
+
+      return rows;
     }
 
     function computeRoommates(list) {
@@ -425,7 +443,7 @@
 
     /* 61 筆全員真實名冊保底資料集（與試算表《1031-1101_活動_成員資料》1:1 精確同步） */
     function initFallbackData() {
-      // 活動流程保底名冊
+      // 活動流程標準保底名冊
       rawScheduleData = [
         {
           day: '10/31 (六)',
@@ -528,7 +546,7 @@
         },
         {
           day: '11/01 (日)',
-          startTime: '9:30',
+          startTime: '09:30',
           duration: '30',
           endTime: '10:00',
           activity: '集合\n- 集合前，全體人員（正巧及知達）請均先完成退房',
@@ -759,7 +777,7 @@
         const location = (idxLoc !== -1 ? r[idxLoc] : r[5]) || '';
         const note = (idxNote !== -1 ? r[idxNote] : r[6]) || '';
 
-        // 嚴格日期校驗：僅當包含日期格式特徵時才認定為新日期
+        // 嚴格日期判斷式：只允許包含合法日期特徵之文字
         const isLegitDay = (d) => {
           if (!d) return false;
           return d.includes('10/') || d.includes('11/') || d.includes('六') || d.includes('日') || d.includes('整體');
@@ -772,7 +790,7 @@
         if (!act && !startTime && !note) continue;
 
         rawScheduleData.push({
-          day: currentDay || dayRaw.trim(),
+          day: currentDay || (isLegitDay(dayRaw.trim()) ? dayRaw.trim() : ''),
           startTime: startTime.trim(),
           duration: duration.trim(),
           endTime: endTime.trim(),
@@ -909,13 +927,16 @@
       }
     }
 
-    function formatTimeSplit(timeStr) {
-      if (!timeStr) return '';
-      if (timeStr.includes(':')) {
-        const parts = timeStr.split(':');
-        return `<div class="leading-tight"><span class="font-bold">${parts[0]}:</span><span class="block text-[11px] text-slate-500 font-mono">${parts[1]}</span></div>`;
+    /* 時間格式標準 HH:mm 單行呈現（不折行） */
+    function formatStandardTime(timeStr) {
+      if (!timeStr) return '-';
+      const clean = timeStr.trim();
+      if (!clean) return '-';
+      // 若為 9:00 自動補零為 09:00
+      if (/^\d:\d{2}$/.test(clean)) {
+        return `0${clean}`;
       }
-      return `<span class="font-bold">${timeStr}</span>`;
+      return clean;
     }
 
     /* --- [分頁1] 活動流程 --- */
@@ -923,10 +944,10 @@
       thead.innerHTML = `
         <tr>
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
-          <th class="py-2.5 px-2 w-20">日期</th>
-          <th class="py-2.5 px-1.5 w-10 text-center">起時</th>
-          <th class="py-2.5 px-1.5 w-10 text-center">迄時</th>
-          <th class="py-2.5 px-2 w-14 text-center">時長</th>
+          <th class="py-2.5 px-2 w-24 whitespace-nowrap">日期</th>
+          <th class="py-2.5 px-2 w-16 text-center whitespace-nowrap">起時</th>
+          <th class="py-2.5 px-2 w-16 text-center whitespace-nowrap">迄時</th>
+          <th class="py-2.5 px-2 w-14 text-center whitespace-nowrap">時長</th>
           <th class="py-2.5 px-2 w-28 break-words">地點</th>
           <th class="py-2.5 px-3 w-[230px] max-w-[16rem]">活動</th>
           <th class="py-2.5 px-3 min-w-[16rem] flex-1">說明</th>
@@ -965,14 +986,14 @@
 
         return `
           <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-            <td class="py-2 px-2 text-center text-slate-400 font-mono text-[11px] align-top">${idx + 1}</td>
-            <td class="py-2 px-2 font-medium text-slate-700 whitespace-nowrap align-top">${escapeHtml(item.day)}</td>
-            <td class="py-2 px-1 text-center align-top whitespace-nowrap">${formatTimeSplit(item.startTime)}</td>
-            <td class="py-2 px-1 text-center align-top whitespace-nowrap">${formatTimeSplit(item.endTime)}</td>
-            <td class="py-2 px-2 text-center text-slate-500 font-mono align-top whitespace-nowrap">${escapeHtml(item.duration)}</td>
-            <td class="py-2 px-2 text-slate-700 break-words leading-snug align-top">${escapeHtml(item.location)}</td>
-            <td class="py-2 px-3 text-slate-900 font-bold text-sm break-words align-top leading-snug">${formattedAct}</td>
-            <td class="py-2 px-3 text-slate-700 text-sm align-top">${formattedNote}</td>
+            <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-top">${idx + 1}</td>
+            <td class="py-2.5 px-2 font-semibold text-slate-800 whitespace-nowrap align-top">${escapeHtml(item.day)}</td>
+            <td class="py-2.5 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-slate-900">${formatStandardTime(item.startTime)}</td>
+            <td class="py-2.5 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-slate-900">${formatStandardTime(item.endTime)}</td>
+            <td class="py-2.5 px-2 text-center text-slate-500 font-mono align-top whitespace-nowrap">${escapeHtml(item.duration ? `${item.duration}分` : '-')}</td>
+            <td class="py-2.5 px-2 text-slate-700 break-words leading-snug align-top">${escapeHtml(item.location || '-')}</td>
+            <td class="py-2.5 px-3 text-slate-900 font-bold text-sm break-words align-top leading-snug">${formattedAct}</td>
+            <td class="py-2.5 px-3 text-slate-700 text-sm align-top">${formattedNote}</td>
           </tr>
         `;
       }).join('');

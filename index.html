@@ -312,7 +312,7 @@
             </a>
             <div class="flex space-x-1">
               <button onclick="markAllDiningArrived('湫禾壽喜燒')" class="px-1.5 py-0.5 bg-indigo-200/70 text-indigo-900 rounded text-[10px] hover:bg-indigo-300">全到✔</button>
-              <button onclick="copyDiningUnarrived('湫禾壽喜燒')" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[10px] hover:bg-rose-700">複製未到</button>
+              <button onclick="copyDiningUnarrived('湫禾壽喜燒')" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[10px] hover:bg-indigo-700">複製未到</button>
             </div>
           </div>
         </div>
@@ -507,6 +507,7 @@
       overviewCheckin: {},
       trafficOut: {},
       trafficBack: {},
+      trafficInsurance: {},
       diningPerson: {},
       diningBus: {},
       lodgingPerson: {},
@@ -557,7 +558,7 @@
       { id: 19, date: "備註說明", startTime: "", endTime: "", duration: "", location: "", activity: "遊覽車接駁安排（培芯車長）", note: "遊覽車35人（培芯車長）\n10/31\n- 集合地點：台中高鐵，6號出口\n- 09:20 台中高鐵出發正巧\n- 11:15 正巧出發送到四個餐廳\n- 14:30 從四個餐廳接送回來正巧\n- 22:00 正巧送到知達\n\n11/01\n- 09:30 知達送到正巧\n- 13:30 正巧出發到台中高鐵" }
     ];
 
-    // 實體「成員資料」真實人員數據（嚴格對應五大交通欄位與房號）
+    // 實體「成員資料」真實人員數據（嚴格對應五大交通欄位、房號與關係）
     let rawDirectoryData = [
       { team: "白", name: "林政緯", relation: "本人", trafficOverviewCombo: "開車/開車", trafficGo: "開車", trafficBack: "開車", diningTraffic: "開車", lodgingTraffic: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roomNumber: "", roommates: "林政緯-妻, 林政緯-看護" },
       { team: "白", name: "林政緯-妻", relation: "家人", trafficOverviewCombo: "開車/開車", trafficGo: "開車", trafficBack: "開車", diningTraffic: "開車", lodgingTraffic: "開車", isTrafficLeader: "否", restaurant: "湫禾壽喜燒", isDiningLeader: "否", diet: "不吃：豬", hotel: "正巧", roomType: "2人房", roomGroup: "正巧-2人房_5", roomNumber: "", roommates: "林政緯, 林政緯-看護" },
@@ -656,6 +657,7 @@
             overviewCheckin: parsed.overviewCheckin || {},
             trafficOut: parsed.trafficOut || {},
             trafficBack: parsed.trafficBack || {},
+            trafficInsurance: parsed.trafficInsurance || {},
             diningPerson: parsed.diningPerson || {},
             diningBus: parsed.diningBus || {},
             lodgingPerson: parsed.lodgingPerson || {},
@@ -807,7 +809,6 @@
                     const r = rows[i];
                     if (!r || r.every(c => !String(c || '').trim())) continue;
 
-                    // 取值輔助函式：若標題對應存在則取該欄位，否則依照標準順序 (0:日期, 1:起時, 2:迄時, 3:時長, 4:活動, 5:地點, 6:說明) 回退
                     const getCell = (colIdx, fallbackIdx) => {
                       if (colIdx !== -1 && r[colIdx] !== undefined) return String(r[colIdx] || '').trim();
                       if (fallbackIdx !== -1 && r[fallbackIdx] !== undefined) return String(r[fallbackIdx] || '').trim();
@@ -1010,6 +1011,7 @@
             overviewCheckin: {},
             trafficOut: {},
             trafficBack: {},
+            trafficInsurance: {},
             diningPerson: {},
             diningBus: {},
             lodgingPerson: {},
@@ -1021,6 +1023,18 @@
           showToast('已重設所有簽到資料', 'success');
         }
       });
+    }
+
+    function updateInsurancePayment(name, status) {
+      if (!isCheckinMode) {
+        showToast('請先點擊右上角「開啟點名/輸入模式」解鎖修改！', 'error');
+        renderCurrentTab();
+        return;
+      }
+      if (!checkinStore.trafficInsurance) checkinStore.trafficInsurance = {};
+      checkinStore.trafficInsurance[name] = status;
+      saveCheckinToStorage();
+      renderCurrentTab();
     }
 
     function updateRoomNumber(name, roomNo) {
@@ -1275,6 +1289,8 @@
       let busOutArrived = 0;
       let busBackTotal = 0;
       let busBackArrived = 0;
+      let insuranceTotal = 0;
+      let insurancePaid = 0;
 
       rawDirectoryData.forEach(item => {
         if (item.trafficGo === '遊覽車') {
@@ -1284,6 +1300,14 @@
         if (item.trafficBack === '遊覽車') {
           busBackTotal++;
           if (checkinStore.trafficBack[item.name]) busBackArrived++;
+        }
+        const takesBus = (item.trafficGo === '遊覽車' || item.trafficBack === '遊覽車');
+        if (takesBus) {
+          insuranceTotal++;
+          const status = (checkinStore.trafficInsurance && checkinStore.trafficInsurance[item.name]) || '尚未繳';
+          if (status !== '尚未繳') {
+            insurancePaid++;
+          }
         }
       });
 
@@ -1295,21 +1319,27 @@
       thead.innerHTML = `
         <tr class="text-sm">
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
-          ${renderHeaderTh('姓名', 'name', 'w-28')}
-          <th class="py-2 px-2.5 font-semibold w-64">
-            <div class="flex items-center justify-between">
-              <div>
+          ${renderHeaderTh('姓名', 'name', 'w-24')}
+          <th class="py-2 px-1 font-semibold w-1 whitespace-nowrap">
+            <div class="flex items-center justify-between gap-1.5 whitespace-nowrap">
+              <div class="whitespace-nowrap">
                 <span class="text-slate-800">去程點名（已上車：${busOutArrived}/${busOutTotal}）</span>
-                <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 09:20 台中高鐵發車往正巧</span>
+                <span class="block text-[11px] font-normal text-emerald-700 leading-tight whitespace-nowrap">遊覽車 09:20 台中高鐵發車往正巧</span>
               </div>
               <button onclick="openFilterModal('trafficGo', '交通-去程', event)" class="p-1 rounded hover:bg-slate-200 transition-colors">
                 <i class="fa-solid fa-filter text-slate-300 ${columnFilters['trafficGo'] && columnFilters['trafficGo'].size > 0 ? 'text-emerald-600' : ''}"></i>
               </button>
             </div>
           </th>
-          <th class="py-2 px-2.5 font-semibold w-64">
-            <div class="flex items-center justify-between">
-              <div>
+          <th class="py-2 px-1 font-semibold w-28 text-center whitespace-nowrap">
+            <div class="flex flex-col items-center justify-center whitespace-nowrap">
+              <span class="text-slate-800 font-bold">旅責險 (140元)</span>
+              <span class="text-[11px] font-normal text-slate-500 leading-tight">已收：${insurancePaid}/${insuranceTotal}</span>
+            </div>
+          </th>
+          <th class="py-2 pl-20 pr-3 font-semibold flex-1 min-w-[14rem]">
+            <div class="flex items-center justify-between gap-3">
+              <div class="whitespace-nowrap">
                 <span class="text-slate-800">回程點名（已上車：${busBackArrived}/${busBackTotal}）</span>
                 <span class="block text-[11px] font-normal text-emerald-700 leading-tight">遊覽車 13:30 正巧發車往台中高鐵</span>
               </div>
@@ -1325,13 +1355,14 @@
       countBadge.textContent = `共 ${list.length} 位人員`;
 
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 text-sm">無符合的交通資料</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 text-sm">無符合的交通資料</td></tr>`;
         return;
       }
 
       tbody.innerHTML = list.map((item, idx) => {
         const bgClass = getTrafficBackBgClass(item.trafficBack);
         const leaderBadge = getTrafficLeaderBadge(item);
+        const takesBus = (item.trafficGo === '遊覽車' || item.trafficBack === '遊覽車');
 
         let outBtnHtml = '';
         if (item.trafficGo === '遊覽車') {
@@ -1340,15 +1371,49 @@
             ? 'bg-emerald-600 text-white font-semibold shadow-xs' 
             : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
           outBtnHtml = `
-            <div class="flex items-center space-x-2">
-              <span class="font-semibold text-slate-800">遊覽車</span>
+            <div class="flex items-center space-x-1.5 whitespace-nowrap">
+              <span class="font-semibold text-slate-800 whitespace-nowrap">遊覽車</span>
               <button onclick="toggleCheckinItem('trafficOut', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
                 ${isArrived ? '✔ 已上車' : '未上車'}
               </button>
             </div>
           `;
         } else {
-          outBtnHtml = `<span class="font-semibold text-slate-500">${escapeHtml(item.trafficGo || '-')}</span>`;
+          outBtnHtml = `<span class="font-semibold text-slate-500 whitespace-nowrap">${escapeHtml(item.trafficGo || '-')}</span>`;
+        }
+
+        let insuranceHtml = '';
+        if (takesBus) {
+          const currentStatus = (checkinStore.trafficInsurance && checkinStore.trafficInsurance[item.name]) || '尚未繳';
+          let selectColorClass = '';
+
+          if (currentStatus === '尚未繳') {
+            selectColorClass = 'bg-rose-50 text-rose-700 border-rose-300 font-bold';
+          } else if (currentStatus === '其他') {
+            selectColorClass = 'bg-purple-50 text-purple-700 border-purple-300 font-semibold';
+          } else {
+            selectColorClass = 'bg-slate-100 text-slate-500 border-slate-300 font-normal';
+          }
+
+          if (isCheckinMode) {
+            insuranceHtml = `
+              <select onchange="updateInsurancePayment('${escapeHtml(item.name)}', this.value)" class="text-xs py-1 px-1.5 rounded border ${selectColorClass} outline-none focus:ring-1 focus:ring-slate-400 shadow-2xs">
+                <option value="尚未繳" class="text-rose-700 font-bold" ${currentStatus === '尚未繳' ? 'selected' : ''}>尚未繳</option>
+                <option value="Linepay" class="text-slate-600" ${currentStatus === 'Linepay' ? 'selected' : ''}>Linepay</option>
+                <option value="現金" class="text-slate-600" ${currentStatus === '現金' ? 'selected' : ''}>現金</option>
+                <option value="匯款" class="text-slate-600" ${currentStatus === '匯款' ? 'selected' : ''}>匯款</option>
+                <option value="其他" class="text-purple-700 font-semibold" ${currentStatus === '其他' ? 'selected' : ''}>其他</option>
+              </select>
+            `;
+          } else {
+            insuranceHtml = `
+              <span class="inline-block px-2 py-0.5 text-xs rounded border ${selectColorClass} select-none whitespace-nowrap" title="請開啟點名/輸入模式修改">
+                ${escapeHtml(currentStatus)}
+              </span>
+            `;
+          }
+        } else {
+          insuranceHtml = `<span class="text-xs text-slate-300 font-medium">-</span>`;
         }
 
         let backBtnHtml = '';
@@ -1358,26 +1423,27 @@
             ? 'bg-emerald-600 text-white font-semibold shadow-xs' 
             : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
           backBtnHtml = `
-            <div class="flex items-center space-x-2">
-              <span class="font-semibold text-slate-800">遊覽車</span>
+            <div class="flex items-center space-x-2 whitespace-nowrap">
+              <span class="font-semibold text-slate-800 whitespace-nowrap">遊覽車</span>
               <button onclick="toggleCheckinItem('trafficBack', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
                 ${isArrived ? '✔ 已上車' : '未上車'}
               </button>
             </div>
           `;
         } else {
-          backBtnHtml = `<span class="font-semibold text-slate-500">${escapeHtml(item.trafficBack || '-')}</span>`;
+          backBtnHtml = `<span class="font-semibold text-slate-500 whitespace-nowrap">${escapeHtml(item.trafficBack || '-')}</span>`;
         }
 
         return `
           <tr class="text-sm border-b border-slate-200 transition-colors ${bgClass}">
             <td class="py-2.5 px-2 text-center text-slate-400 align-middle">${idx + 1}</td>
-            <td class="py-2.5 px-2.5 align-middle">
-              <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
+            <td class="py-2.5 px-2 align-middle">
+              <div class="font-bold text-slate-900 whitespace-nowrap">${escapeHtml(item.name)}</div>
               ${leaderBadge}
             </td>
-            <td class="py-2.5 px-2.5 align-middle">${outBtnHtml}</td>
-            <td class="py-2.5 px-2.5 align-middle">${backBtnHtml}</td>
+            <td class="py-2.5 px-1 align-middle whitespace-nowrap">${outBtnHtml}</td>
+            <td class="py-2.5 px-1 text-center align-middle whitespace-nowrap">${insuranceHtml}</td>
+            <td class="py-2.5 pl-20 pr-3 align-middle">${backBtnHtml}</td>
           </tr>
         `;
       }).join('');
@@ -1687,7 +1753,6 @@
           ? 'bg-emerald-600 text-white font-semibold shadow-xs'
           : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
 
-        // 房號：若本機儲存有值則優先使用；否則使用試算表抓取的房號；若為空則顯示 "--"
         const savedRoomNo = (checkinStore.roomNumbers && checkinStore.roomNumbers[item.name]);
         let displayRoomNo = (savedRoomNo !== undefined && savedRoomNo !== null && savedRoomNo !== '') 
           ? savedRoomNo 
@@ -1847,11 +1912,6 @@
         });
       } else {
         if (currentTab === 'overview') {
-          // 【總表排序規則】
-          // 1. 隊別：白 → 紅 → 綠 → 接班人
-          // 2. 姓名：依中文筆畫由少至多排序
-          // 3. 交通去/回：遊覽車/遊覽車 → 自行/遊覽車 → 開車/開車 → 其他
-          // 4. 住宿安排：知達 → 正巧4人房 → 正巧2人房 → 其他
           const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
 
           const getTrafficComboRank = (item) => {
@@ -1888,11 +1948,6 @@
             return lA - lB;
           });
         } else if (currentTab === 'traffic') {
-          // 【交通安排排序規則】
-          // 1. 車長置頂
-          // 2. 去程（參照「交通-去程」）：遊覽車 ➔ 自行（含自處） ➔ 開車 ➔ 其他
-          // 3. 回程（參照「交通-回程」）：遊覽車 ➔ 自行（含自處） ➔ 開車 ➔ 其他
-          // 4. 姓名繁體中文筆畫
           list.sort((a, b) => {
             if (a.isTrafficLeader === '是' && b.isTrafficLeader !== '是') return -1;
             if (a.isTrafficLeader !== '是' && b.isTrafficLeader === '是') return 1;
@@ -1916,7 +1971,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'dining') {
-          // 餐飲安排排序：1. 餐廳 ➔ 2. 車長/領談員 ➔ 3. 交通方式 ➔ 4. 姓名筆畫
           list.sort((a, b) => {
             if (a.restaurant !== b.restaurant) return strokeSort(a.restaurant, b.restaurant);
 
@@ -1943,12 +1997,6 @@
             return strokeSort(a.name, b.name);
           });
         } else if (currentTab === 'lodging') {
-          // 【住宿安排嚴格排序規則】
-          // 1. 住宿飯店：知達工藝會館 ➔ 正巧文旅
-          // 2. 聯絡人絕對置頂各單位第 1 位 (知達: 杜志峰、吳淋禎；正巧: 吳緁苓)
-          // 3. 房型：2人房 ➔ 4人房 ➔ 其他
-          // 4. 交通：遊覽車 ➔ 開車 ➔ 其他
-          // 5. 姓名：繁體中文筆畫由少至多
           list.sort((a, b) => {
             const getHotelCode = (item) => (item.hotel || '').includes('知達') ? 1 : 2;
             const hA = getHotelCode(a);

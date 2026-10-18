@@ -489,7 +489,7 @@
        1. 狀態與名冊資料（雙試算表資料來源串接）
        ========================================================= */
     const GOOGLE_SHEET_DIR_URL = 'https://docs.google.com/spreadsheets/d/1IG9gdIuvad5sj0RWC8hzvIvdBYSQo4j0ERf910AV24U/export?format=csv&gid=943908442';
-    const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1rtaD9Y4-1iv4rD68QNT64dv1x-o02rUc2kyosc26LVM/export?format=csv&gid=491680836';
+    const GOOGLE_SHEET_SCHEDULE_URL = 'https://docs.google.com/spreadsheets/d/1EpTmoFf8X4VTPUS8m9uFantz-dypXzIMDYusHgWD3Gk/export?format=csv';
 
     let currentTab = 'schedule';
     let searchQuery = '';
@@ -775,33 +775,71 @@
             complete: (results) => {
               if (results.data && results.data.length > 1) {
                 const rows = results.data;
-                let headerIdx = 0;
-                for (let i = 0; i < Math.min(rows.length, 5); i++) {
+                let headerIdx = -1;
+                
+                // 動態尋找表頭所在列
+                for (let i = 0; i < Math.min(rows.length, 6); i++) {
                   const rowStr = rows[i].join('');
-                  if (rowStr.includes('日期') || rowStr.includes('活動')) {
+                  if (rowStr.includes('日期') || rowStr.includes('起時') || rowStr.includes('活動')) {
                     headerIdx = i;
                     break;
                   }
                 }
 
-                const parsedSched = [];
-                for (let i = headerIdx + 1; i < rows.length; i++) {
-                  const r = rows[i];
-                  if (!r || r.length < 5) continue;
-                  if (r[0] === '日期' || r[1] === '起時' || r[4] === '活動') continue;
-                  parsedSched.push({
-                    id: parsedSched.length + 1,
-                    date: (r[0] || '').trim(),
-                    startTime: (r[1] || '').trim(),
-                    endTime: (r[2] || '').trim(),
-                    duration: (r[3] || '').trim(),
-                    location: (r[5] || r[4] || '').trim(),
-                    activity: (r[4] || r[5] || '').trim(),
-                    note: (r[6] || '').trim()
-                  });
-                }
-                if (parsedSched.length > 0) {
-                  scheduleData = parsedSched;
+                if (headerIdx !== -1) {
+                  const headerRow = rows[headerIdx].map(h => String(h || '').trim());
+                  
+                  // 精確尋找各欄位索引
+                  const getColIndex = (keywords) => {
+                    return headerRow.findIndex(h => keywords.some(k => h === k || h.includes(k)));
+                  };
+
+                  const idxDate = getColIndex(['日期', '天數']);
+                  const idxStartTime = getColIndex(['起時', '開始時間', '開始']);
+                  const idxEndTime = getColIndex(['迄時', '結束時間', '結束']);
+                  const idxDuration = getColIndex(['時長', '時間長度', '長度']);
+                  const idxLocation = getColIndex(['地點', '位置']);
+                  const idxActivity = getColIndex(['活動', '行程', '內容']);
+                  const idxNote = getColIndex(['說明', '備註', '注意事項']);
+
+                  const parsedSched = [];
+                  for (let i = headerIdx + 1; i < rows.length; i++) {
+                    const r = rows[i];
+                    if (!r || r.every(c => !String(c || '').trim())) continue;
+
+                    // 取值輔助函式：若標題對應存在則取該欄位，否則依照標準順序 (0:日期, 1:起時, 2:迄時, 3:時長, 4:活動, 5:地點, 6:說明) 回退
+                    const getCell = (colIdx, fallbackIdx) => {
+                      if (colIdx !== -1 && r[colIdx] !== undefined) return String(r[colIdx] || '').trim();
+                      if (fallbackIdx !== -1 && r[fallbackIdx] !== undefined) return String(r[fallbackIdx] || '').trim();
+                      return '';
+                    };
+
+                    const dateVal = getCell(idxDate, 0);
+                    const startTimeVal = getCell(idxStartTime, 1);
+                    const endTimeVal = getCell(idxEndTime, 2);
+                    const durationVal = getCell(idxDuration, 3);
+                    const activityVal = getCell(idxActivity, 4);
+                    const locationVal = getCell(idxLocation, 5);
+                    const noteVal = getCell(idxNote, 6);
+
+                    // 過濾重複表頭行
+                    if (dateVal === '日期' || startTimeVal === '起時' || activityVal === '活動') continue;
+
+                    parsedSched.push({
+                      id: parsedSched.length + 1,
+                      date: dateVal,
+                      startTime: startTimeVal,
+                      endTime: endTimeVal,
+                      duration: durationVal,
+                      location: locationVal,
+                      activity: activityVal,
+                      note: noteVal
+                    });
+                  }
+
+                  if (parsedSched.length > 0) {
+                    scheduleData = parsedSched;
+                  }
                 }
               }
             }
@@ -1022,13 +1060,13 @@
       thead.innerHTML = `
         <tr class="text-xs">
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
-          <th class="py-2.5 px-1.5 w-24 text-center">日期</th>
-          <th class="py-2.5 px-1.5 w-14 text-center">起時</th>
-          <th class="py-2.5 px-1.5 w-14 text-center">迄時</th>
-          <th class="py-2.5 px-1.5 w-14 text-center">時長</th>
-          <th class="py-2.5 px-3 w-36">地點</th>
-          <th class="py-2.5 px-3 min-w-[12rem]">活動</th>
-          <th class="py-2.5 px-3 min-w-[18rem] flex-1">說明</th>
+          <th class="py-2.5 px-1.5 w-20 text-center">日期</th>
+          <th class="py-2.5 px-1 w-10 text-center">起時</th>
+          <th class="py-2.5 px-1 w-10 text-center">迄時</th>
+          <th class="py-2.5 px-1 w-11 text-center">時長</th>
+          <th class="py-2.5 px-2 w-24">地點</th>
+          <th class="py-2.5 px-2.5 w-[230px] max-w-[16rem]">活動</th>
+          <th class="py-2.5 px-3 min-w-[16rem] flex-1">說明</th>
           ${isScheduleEditing ? '<th class="py-2.5 px-2 w-12 text-center text-rose-500">刪除</th>' : ''}
         </tr>
       `;
@@ -1058,8 +1096,8 @@
               <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.endTime)}" onchange="updateScheduleCell(${item.id}, 'endTime', this.value)"></td>
               <td class="p-1"><input class="w-full text-center bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.duration)}" onchange="updateScheduleCell(${item.id}, 'duration', this.value)"></td>
               <td class="p-1"><input class="w-full bg-white border border-slate-300 rounded p-1 text-xs" value="${escapeHtml(item.location)}" onchange="updateScheduleCell(${item.id}, 'location', this.value)"></td>
-              <td class="p-1"><textarea rows="2" class="w-full font-semibold bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'activity', this.value)">${escapeHtml(item.activity)}</textarea></td>
-              <td class="p-1"><textarea rows="3" class="w-full bg-white border border-slate-300 rounded p-1 text-xs" onchange="updateScheduleCell(${item.id}, 'note', this.value)">${escapeHtml(item.note)}</textarea></td>
+              <td class="p-1"><textarea rows="2" class="w-full font-bold bg-white border border-slate-300 rounded p-1 text-sm" onchange="updateScheduleCell(${item.id}, 'activity', this.value)">${escapeHtml(item.activity)}</textarea></td>
+              <td class="p-1"><textarea rows="3" class="w-full bg-white border border-slate-300 rounded p-1 text-sm" onchange="updateScheduleCell(${item.id}, 'note', this.value)">${escapeHtml(item.note)}</textarea></td>
               <td class="p-1 text-center">
                 <button onclick="deleteScheduleRow(${item.id})" class="text-rose-500 hover:text-rose-700 p-1.5" title="刪除"><i class="fa-solid fa-trash"></i></button>
               </td>
@@ -1068,18 +1106,34 @@
         }
 
         return `
-          <tr class="text-xs border-b border-slate-200 transition-colors ${bgClass}">
-            <td class="py-2.5 px-2 text-center text-slate-400">${idx + 1}</td>
-            <td class="py-2.5 px-1.5 text-center font-medium text-slate-700 whitespace-nowrap">${escapeHtml(item.date)}</td>
-            <td class="py-2.5 px-1.5 text-center font-mono text-slate-600 whitespace-nowrap">${escapeHtml(item.startTime || '-')}</td>
-            <td class="py-2.5 px-1.5 text-center font-mono text-slate-600 whitespace-nowrap">${escapeHtml(item.endTime || '-')}</td>
-            <td class="py-2.5 px-1.5 text-center text-slate-400 italic whitespace-nowrap">${item.duration ? escapeHtml(item.duration + '分') : '-'}</td>
-            <td class="py-2.5 px-3 font-medium text-slate-700 break-words">${escapeHtml(item.location || '-')}</td>
-            <td class="py-2.5 px-3 font-bold text-slate-900 break-words whitespace-pre-line">${escapeHtml(item.activity)}</td>
-            <td class="py-2.5 px-3 text-slate-700 break-words leading-relaxed">${formatScheduleNote(item.note)}</td>
+          <tr class="border-b border-slate-200 transition-colors ${bgClass}">
+            <td class="py-2.5 px-2 text-center text-slate-400 text-xs">${idx + 1}</td>
+            <td class="py-2.5 px-1.5 text-center font-medium text-slate-700 text-xs whitespace-nowrap">${escapeHtml(item.date)}</td>
+            <td class="py-2.5 px-1 text-center font-mono text-slate-800 leading-tight">${formatTwoLineTime(item.startTime)}</td>
+            <td class="py-2.5 px-1 text-center font-mono text-slate-800 leading-tight">${formatTwoLineTime(item.endTime)}</td>
+            <td class="py-2.5 px-1 text-center text-slate-400 italic text-xs leading-tight whitespace-nowrap">${item.duration ? escapeHtml(item.duration + '分') : '-'}</td>
+            <td class="py-2.5 px-2 text-xs font-medium text-slate-700 break-words leading-snug">${escapeHtml(item.location || '-')}</td>
+            <td class="py-2.5 px-2.5 text-sm font-bold text-slate-900 break-words whitespace-pre-line leading-snug w-[230px] max-w-[16rem]">${escapeHtml(item.activity)}</td>
+            <td class="py-2.5 px-3 text-sm text-slate-800 break-words leading-relaxed">${formatScheduleNote(item.note)}</td>
           </tr>
         `;
       }).join('');
+    }
+
+    // 將時間拆解為上下兩行（例如 15:00 顯示為上方 "15:"、下方 "00"）
+    function formatTwoLineTime(timeStr) {
+      if (!timeStr) return '<span class="text-slate-300 text-xs">-</span>';
+      const str = String(timeStr).trim();
+      if (str.includes(':')) {
+        const parts = str.split(':');
+        return `
+          <div class="flex flex-col items-center justify-center font-bold text-xs tracking-tight">
+            <span>${escapeHtml(parts[0])}:</span>
+            <span>${escapeHtml(parts[1])}</span>
+          </div>
+        `;
+      }
+      return `<span class="text-xs font-semibold">${escapeHtml(str)}</span>`;
     }
 
     function getScheduleRowBg(date, startTime) {

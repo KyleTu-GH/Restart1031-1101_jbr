@@ -47,7 +47,7 @@
       <div class="flex items-center space-x-2">
         <button id="toggleCheckinModeBtn" onclick="handleCheckinModeToggle()" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition flex items-center space-x-1.5 shadow-2xs">
           <i class="fa-solid fa-user-check text-slate-500"></i>
-          <span id="checkinModeBtnLabel">開啟點名/輸入模式</span>
+          <span id="checkinModeBtnLabel">開啟點名模式</span>
         </button>
 
         <button onclick="refreshAllData()" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition flex items-center space-x-1.5 shadow-2xs" title="清空搜尋並重新載入">
@@ -178,7 +178,7 @@
             </div>
           </div>
           <div class="text-emerald-800 text-[11px] leading-relaxed">
-            車長：<strong>胡靖韋</strong> ｜ 領談員：<strong>范永銀</strong><br>
+            車長：<strong>盧建邦</strong> ｜ 領談員：<strong>范永銀</strong><br>
             進度：<strong id="diningProgress-植田">0 / 0</strong>
           </div>
           <button onclick="copyDiningAttendance('植田')" class="w-full py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded font-semibold text-[11px] shadow-2xs transition">
@@ -305,8 +305,7 @@
       dining: {},
       diningBus: {},
       lodging: {},
-      lodgingBus: {},
-      roomNumbers: {}
+      lodgingBus: {}
     };
 
     function loadCheckinStore() {
@@ -322,8 +321,7 @@
             dining: parsed.dining || {},
             diningBus: parsed.diningBus || {},
             lodging: parsed.lodging || {},
-            lodgingBus: parsed.lodgingBus || {},
-            roomNumbers: parsed.roomNumbers || {}
+            lodgingBus: parsed.lodgingBus || {}
           };
         }
       } catch (e) {
@@ -373,7 +371,7 @@
       return (a || '').localeCompare((b || ''), 'zh-Hant-TW', { collation: 'stroke' });
     }
 
-    /* 嚴格 RFC 4180 CSV 狀態機解析引擎，妥善處理引號內的多行文字 */
+    /* 嚴格 RFC 4180 CSV 解析器 */
     function parseCSV(text) {
       const rows = [];
       let currentRow = [];
@@ -419,7 +417,7 @@
       return rows;
     }
 
-    /* 嚴格依據「飯店 + 房型 + 分組」複合 Key 判定同房室友，徹底杜絕跨飯店、跨房型串房 */
+    /* 複合 Key: 飯店 + 房型 + 分組 判定同房室友 */
     function computeRoommates(list) {
       const groupMap = {};
       list.forEach(item => {
@@ -449,7 +447,7 @@
       });
     }
 
-    /* 61 筆全員真實名冊保底資料集（與試算表《1031-1101_活動_成員資料》1:1 精確同步） */
+    /* 63 筆全員真實名冊保底資料集（與試算表最新母檔第 M 欄「飲食注意事項」1:1 精確同步） */
     function initFallbackData() {
       rawScheduleData = [
         {
@@ -616,68 +614,71 @@
         }
       ];
 
+      // 63 筆全員真實名冊（含完整「飲食注意事項」，1:1 精確同步）
       const fullList = [
-        { team: '綠', name: '何琇菱', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_06' },
-        { team: '白', name: '吳全峰', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_16' },
-        { team: '白', name: '吳羿慧', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_04' },
-        { team: '白', name: '吳惠君', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
-        { team: '紅', name: '李筱瑋', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_01' },
-        { team: '紅', name: '汪方巧', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
-        { team: '綠', name: '沈佳慧', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_02' },
-        { team: '接班人', name: '周宗弘', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
-        { team: '紅', name: '林郁婷', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_09' },
-        { team: '白', name: '林慧茹', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_03' },
-        { team: '紅', name: '胡智容', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
-        { team: '綠', name: '胡靖韋', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_14' },
-        { team: '接班人', name: '范永銀', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_02' },
-        { team: '紅', name: '殷燕伶', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_05' },
-        { team: '綠', name: '張婷婷', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
-        { team: '接班人', name: '梁懷貞', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_03' },
-        { team: '紅', name: '莫惠萍', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_01' },
-        { team: '白', name: '陳俐君', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_06' },
-        { team: '白', name: '陳若雲', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_08' },
-        { team: '綠', name: '陳揚舒', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_02' },
-        { team: '白', name: '陳群玉', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_01' },
-        { team: '白', name: '陶逸婕', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_10' },
-        { team: '綠', name: '黃立軒', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_01' },
-        { team: '白', name: '黃瑪琍', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_03' },
-        { team: '接班人', name: '廖培芯', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: 'NO', diningTraffic: 'NO', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
-        { team: '白', name: '劉毓菁', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_01' },
-        { team: '綠', name: '盧建邦', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_14' },
-        { team: '接班人', name: '謝文憲', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_01' },
-        { team: '綠', name: '謝宜倩', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_08' },
-        { team: '紅', name: '鍾淳仁', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_15' },
-        { team: '綠', name: '魏鈴芳', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
-        { team: '接班人', name: '杜志峰', relation: '本人', trafficGo: '自行處理', trafficBack: '遊覽車', trafficOverviewCombo: '自行/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '207', roomGroup: '知達-2人房_18' },
-        { team: '綠', name: '徐珮甄', relation: '本人', trafficGo: '自行處理', trafficBack: '遊覽車', trafficOverviewCombo: '自行/遊覽車', dining: 'NO', diningTraffic: 'NO', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_04' },
-        { team: '紅', name: '陳厚任', relation: '本人', trafficGo: '自行處理', trafficBack: '遊覽車', trafficOverviewCombo: '自行/遊覽車', dining: 'NO', diningTraffic: 'NO', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_12' },
-        { team: '接班人', name: '田富元（田爸）', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_16' },
-        { team: '接班人', name: '吳佩容', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '植田割烹', diningTraffic: '開車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
-        { team: '綠', name: '吳建逢', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_13' },
-        { team: '接班人', name: '吳淋禎', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_10' },
-        { team: '接班人', name: '吳緁苓', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_04' },
-        { team: '接班人', name: '吳曉宣', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_11' },
-        { team: '綠', name: '李紘逸', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_03' },
-        { team: '白', name: '林政緯', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_05' },
-        { team: '白', name: '林政緯-妻', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_05' },
-        { team: '白', name: '林政緯-看護', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_05' },
-        { team: '接班人', name: '林珊汝', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_17' },
-        { team: '接班人', name: '林珊汝-子（6歲）', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_17' },
-        { team: '接班人', name: '林珊汝-夫', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_17' },
-        { team: '接班人', name: '洪淑姮', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_04' },
-        { team: '綠', name: '許家倫', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
-        { team: '紅', name: '郭淑貞', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
-        { team: '綠', name: '陳尹恩', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
-        { team: '綠', name: '陳美好', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_07' },
-        { team: '接班人', name: '陳翊榛', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_11' },
-        { team: '紅', name: '彭偉峰', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '植田割烹', diningTraffic: '開車', hotel: 'NO', lodgingTraffic: 'NO', roomType: 'NO', roomNumber: '', roomGroup: '無' },
-        { team: '紅', name: '黃義涵', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_09' },
-        { team: '紅', name: '葉少強', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_12' },
-        { team: '白', name: '劉又壬', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_15' },
-        { team: '紅', name: '潘麗婧', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
-        { team: '紅', name: '盧萱語', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_07' },
-        { team: '白', name: '薛雅文', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_05' },
-        { team: '白', name: '魏志毓', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '', roomGroup: '知達-2人房_13' }
+        { team: '綠', name: '何琇菱', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '302', roomGroup: '知達-2人房_06' },
+        { team: '白', name: '吳全峰', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '506', roomGroup: '知達-2人房_16' },
+        { team: '白', name: '吳羿慧', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '不吃：牛羊', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '307', roomGroup: '知達-2人房_04' },
+        { team: '白', name: '吳惠君', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
+        { team: '紅', name: '李筱瑋', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_01' },
+        { team: '紅', name: '汪方巧', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', diet: '不吃：鴨', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
+        { team: '綠', name: '沈佳慧', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '309', roomGroup: '知達-2人房_02' },
+        { team: '接班人', name: '周宗弘', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
+        { team: '紅', name: '林郁婷', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '不吃：牛', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '209', roomGroup: '知達-2人房_09' },
+        { team: '白', name: '林慧茹', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '308', roomGroup: '知達-2人房_03' },
+        { team: '紅', name: '胡智容', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '不吃：辣', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
+        { team: '綠', name: '胡靖韋', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '不吃：牛羊', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '202', roomGroup: '知達-2人房_14' },
+        { team: '接班人', name: '范永銀', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '不吃：蒜', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_02' },
+        { team: '紅', name: '殷燕伶', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '305', roomGroup: '知達-2人房_05' },
+        { team: '綠', name: '張婷婷', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '不吃：牛羊', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
+        { team: '接班人', name: '梁懷貞', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_03' },
+        { team: '紅', name: '莫惠萍', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '不吃：牛羊', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '310', roomGroup: '知達-2人房_01' },
+        { team: '白', name: '陳俐君', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '302', roomGroup: '知達-2人房_06' },
+        { team: '白', name: '陳若雲', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '210', roomGroup: '知達-2人房_08' },
+        { team: '綠', name: '陳揚舒', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '309', roomGroup: '知達-2人房_02' },
+        { team: '白', name: '陳群玉', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_01' },
+        { team: '白', name: '陶逸婕', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '508', roomGroup: '知達-2人房_10' },
+        { team: '綠', name: '黃立軒', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '素食：蛋奶素、五辛素', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '310', roomGroup: '知達-2人房_01' },
+        { team: '白', name: '黃瑪琍', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '308', roomGroup: '知達-2人房_03' },
+        { team: '接班人', name: '廖培芯', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
+        { team: '白', name: '劉毓菁', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '湫禾壽喜燒', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_01' },
+        { team: '綠', name: '盧建邦', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '202', roomGroup: '知達-2人房_14' },
+        { team: '接班人', name: '謝文憲', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_01' },
+        { team: '綠', name: '謝宜倩', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '210', roomGroup: '知達-2人房_08' },
+        { team: '紅', name: '鍾淳仁', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '201', roomGroup: '知達-2人房_15' },
+        { team: '綠', name: '魏鈴芳', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '植田割烹', diningTraffic: '遊覽車', diet: '不吃：牛', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
+        { team: '接班人', name: '杜志峰', relation: '本人', trafficGo: '自行處理', trafficBack: '遊覽車', trafficOverviewCombo: '自行/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '207', roomGroup: '知達-2人房_18' },
+        { team: '綠', name: '徐珮甄', relation: '本人', trafficGo: '自行處理', trafficBack: '遊覽車', trafficOverviewCombo: '自行/遊覽車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '307', roomGroup: '知達-2人房_04' },
+        { team: '紅', name: '陳厚任', relation: '本人', trafficGo: '自行處理', trafficBack: '遊覽車', trafficOverviewCombo: '自行/遊覽車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '205', roomGroup: '知達-2人房_12' },
+        { team: '接班人', name: '田富元（田爸）', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '506', roomGroup: '知達-2人房_16' },
+        { team: '接班人', name: '吳佩容', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '植田割烹', diningTraffic: '開車', diet: '不吃：麩質食物', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_04' },
+        { team: '綠', name: '吳建逢', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '不吃：牛', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '203', roomGroup: '知達-2人房_13' },
+        { team: '接班人', name: '吳淋禎', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '508', roomGroup: '知達-2人房_10' },
+        { team: '接班人', name: '吳緁苓', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_04' },
+        { team: '接班人', name: '吳曉宣', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '206', roomGroup: '知達-2人房_11' },
+        { team: '綠', name: '李紘逸', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_03' },
+        { team: '白', name: '林政緯', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_05' },
+        { team: '白', name: '林政緯-妻', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_05' },
+        { team: '白', name: '林政緯-看護', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_05' },
+        { team: '接班人', name: '林珊汝', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '306', roomGroup: '知達-2人房_17' },
+        { team: '接班人', name: '林珊汝-子（6歲）', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '306', roomGroup: '知達-2人房_17' },
+        { team: '接班人', name: '林珊汝-夫', relation: '周邊', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '306', roomGroup: '知達-2人房_17' },
+        { team: '接班人', name: '洪淑姮', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '2人房', roomNumber: '', roomGroup: '正巧-2人房_04' },
+        { team: '綠', name: '許家倫', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_03' },
+        { team: '紅', name: '郭淑貞', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
+        { team: '綠', name: '陳尹恩', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '素食：蛋奶素、五辛素', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
+        { team: '綠', name: '陳美好', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '301', roomGroup: '知達-2人房_07' },
+        { team: '接班人', name: '陳翊榛', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '206', roomGroup: '知達-2人房_11' },
+        { team: '紅', name: '彭偉峰', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '植田割烹', diningTraffic: '開車', diet: '無', hotel: 'NO', lodgingTraffic: 'NO', roomType: 'NO', roomNumber: '', roomGroup: '無' },
+        { team: '紅', name: '黃義涵', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '209', roomGroup: '知達-2人房_09' },
+        { team: '紅', name: '葉少強', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '205', roomGroup: '知達-2人房_12' },
+        { team: '白', name: '劉又壬', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', diet: '無', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '201', roomGroup: '知達-2人房_15' },
+        { team: '紅', name: '潘麗婧', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '無', hotel: '正巧', lodgingTraffic: '--', roomType: '4人房', roomNumber: '', roomGroup: '正巧-4人房_02' },
+        { team: '紅', name: '盧萱語', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '湫禾壽喜燒', diningTraffic: '開車', diet: '過敏：蛋和小麥', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '301', roomGroup: '知達-2人房_07' },
+        { team: '白', name: '薛雅文', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '麵五三屋', diningTraffic: '開車', diet: '不吃：牛', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '305', roomGroup: '知達-2人房_05' },
+        { team: '白', name: '魏志毓', relation: '本人', trafficGo: '開車', trafficBack: '開車', trafficOverviewCombo: '開車/開車', dining: '弎食鉄板', diningTraffic: '開車', diet: '素食：蛋奶素', hotel: '知達', lodgingTraffic: '開車', roomType: '2人房', roomNumber: '203', roomGroup: '知達-2人房_13' },
+        { team: '其他', name: '司機1', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '208', roomGroup: '知達-2人房_19' },
+        { team: '其他', name: '司機2', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: 'NO', diningTraffic: 'NO', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '208', roomGroup: '知達-2人房_19' }
       ];
 
       computeRoommates(fullList);
@@ -711,19 +712,27 @@
       const idxTrafficCombo = headers.findIndex(h => h.includes('交通去/回') || h.includes('交通-去/回'));
       const idxDining = headers.findIndex(h => h.includes('餐廳') && !h.includes('交通'));
       const idxDiningTraffic = headers.findIndex(h => h === '餐廳-交通' || h.includes('餐廳交通'));
-      const idxDiet = headers.findIndex(h => h.includes('飲食') || h.includes('備註'));
+      
+      // 精準鎖定第 M 欄「飲食注意事項」
+      let idxDiet = headers.findIndex(h => h === '飲食注意事項');
+      if (idxDiet === -1) {
+        idxDiet = headers.findIndex(h => h.includes('飲食') || h.includes('特殊飲食'));
+      }
+      if (idxDiet === -1) {
+        idxDiet = 12; // 備用防呆：第 M 欄（索引 12）
+      }
+
       const idxHotel = headers.findIndex(h => h.includes('住宿') && !h.includes('交通') && !h.includes('房型'));
       const idxLodgingTraffic = headers.findIndex(h => h === '住宿交通' || h.includes('住宿-交通'));
       const idxRoomNumber = headers.findIndex(h => h === '房號' || h.includes('房號'));
       const idxRoomType = headers.findIndex(h => h.includes('房型') && !h.includes('分組'));
       
-      // 關鍵鎖定：精準抓取「住宿-房型-分組」，嚴防抓到純數字「房間分組」
       let idxRoomGroup = headers.findIndex(h => h === '住宿-房型-分組');
       if (idxRoomGroup === -1) {
         idxRoomGroup = headers.findIndex(h => h.includes('住宿-房型-分組'));
       }
       if (idxRoomGroup === -1) {
-        idxRoomGroup = 20; // 備用防呆：第 U 欄（索引 20）
+        idxRoomGroup = 20; // 備用防呆：第 U 欄
       }
 
       const list = [];
@@ -738,12 +747,12 @@
         let diningTraffic = (idxDiningTraffic !== -1 ? r[idxDiningTraffic] : '') || '';
         let lodgingTraffic = (idxLodgingTraffic !== -1 ? r[idxLodgingTraffic] : '') || '';
         let trafficCombo = (idxTrafficCombo !== -1 ? r[idxTrafficCombo] : '') || '';
+        let diet = (idxDiet !== -1 && idxDiet < r.length ? r[idxDiet] : '') || '';
         let hotel = (idxHotel !== -1 ? r[idxHotel] : '') || '';
         let roomType = (idxRoomType !== -1 ? r[idxRoomType] : '') || '';
         let roomGroup = (idxRoomGroup !== -1 && idxRoomGroup < r.length ? r[idxRoomGroup] : '') || '';
-        let roomNumber = (idxRoomNumber !== -1 ? r[idxRoomNumber] : '') || '';
+        let roomNumber = (idxRoomNumber !== -1 && idxRoomNumber < r.length ? r[idxRoomNumber] : '') || '';
 
-        // 徹底防呆：若不幸讀到純數字，自動依飯店與房型組合成唯一 Group Key
         if (/^\d+$/.test(roomGroup.trim())) {
           const hPrefix = hotel.includes('知達') ? '知達' : (hotel.includes('正巧') ? '正巧' : hotel);
           roomGroup = `${hPrefix}-${roomType}_${roomGroup.trim().padStart(2, '0')}`;
@@ -758,7 +767,7 @@
           trafficOverviewCombo: trafficCombo.trim() || `${trafficGo}/${trafficBack}`,
           dining: dining.trim(),
           diningTraffic: diningTraffic.trim(),
-          diet: (idxDiet !== -1 ? r[idxDiet] : '').trim(),
+          diet: diet.trim(),
           hotel: hotel.trim(),
           lodgingTraffic: lodgingTraffic.trim(),
           roomType: roomType.trim(),
@@ -869,7 +878,7 @@
 
     function handleCheckinModeToggle() {
       if (!isCheckinMode) {
-        const input = prompt('請輸入工作人員管理密碼以開啟點名/輸入模式：');
+        const input = prompt('請輸入工作人員管理密碼以開啟點名模式：');
         if (input === PASSCODE) {
           isCheckinMode = true;
           updateCheckinModeUI();
@@ -890,17 +899,17 @@
       if (isCheckinMode) {
         btn.classList.add('bg-amber-100', 'border-amber-400', 'text-amber-900');
         btn.classList.remove('bg-white', 'text-slate-700');
-        label.textContent = '鎖定點名/輸入模式';
+        label.textContent = '鎖定點名模式';
       } else {
         btn.classList.remove('bg-amber-100', 'border-amber-400', 'text-amber-900');
         btn.classList.add('bg-white', 'text-slate-700');
-        label.textContent = '開啟點名/輸入模式';
+        label.textContent = '開啟點名模式';
       }
     }
 
     function toggleCheckin(type, name) {
       if (!isCheckinMode) {
-        alert('請先點擊右上角「開啟點名/輸入模式」輸入密碼解鎖後再進行操作！');
+        alert('請先點擊右上角「開啟點名模式」輸入密碼解鎖後再進行操作！');
         return;
       }
       checkinStore[type][name] = !checkinStore[type][name];
@@ -908,18 +917,9 @@
       renderCurrentTab();
     }
 
-    function updateRoomNumber(name, val) {
-      if (!isCheckinMode) {
-        alert('請先開啟點名/輸入模式後再輸入房號！');
-        return;
-      }
-      checkinStore.roomNumbers[name] = val.trim();
-      saveCheckinStore();
-    }
-
     function updateInsuranceStatus(name, val) {
       if (!isCheckinMode) {
-        alert('請先開啟點名/輸入模式後再修改旅責險狀態！');
+        alert('請先開啟點名模式後再修改旅責險狀態！');
         return;
       }
       checkinStore.trafficInsurance[name] = val;
@@ -1056,7 +1056,7 @@
         );
       });
 
-      const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
+      const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4, '其他': 5 };
       filtered.sort((a, b) => {
         const orderA = teamOrder[a.team] || 99;
         const orderB = teamOrder[b.team] || 99;
@@ -1095,7 +1095,8 @@
           '白': 'bg-slate-100 text-slate-700 border-slate-300',
           '紅': 'bg-rose-100 text-rose-800 border-rose-300',
           '綠': 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          '接班人': 'bg-amber-100 text-amber-800 border-amber-300'
+          '接班人': 'bg-amber-100 text-amber-800 border-amber-300',
+          '其他': 'bg-slate-100 text-slate-500 border-slate-200'
         }[item.team] || 'bg-slate-50 text-slate-600 border-slate-200';
 
         const rowBg = getOverviewRowBg(item.team);
@@ -1279,7 +1280,7 @@
       }).join('');
     }
 
-    /* --- [分頁4] 餐飲安排：根據「餐廳名稱」使用不同底色 --- */
+    /* --- [分頁4] 餐飲安排：呈現正確之「飲食注意事項」 --- */
     function getDiningRowBg(dining) {
       if (!dining) return 'bg-white hover:bg-slate-50';
       if (dining.includes('弎食')) return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1296,7 +1297,7 @@
           <th class="py-2.5 px-3 w-36">餐廳名稱</th>
           <th class="py-2.5 px-3 w-32">姓名 (入席點名)</th>
           <th class="py-2.5 px-3 w-32">接駁車點名</th>
-          <th class="py-2.5 px-3 flex-1 min-w-[12rem]">特殊飲食 / 備註</th>
+          <th class="py-2.5 px-3 flex-1 min-w-[14rem]">特殊飲食 / 備註</th>
         </tr>
       `;
 
@@ -1314,7 +1315,8 @@
         return (
           item.name.toLowerCase().includes(searchQuery) ||
           item.dining.toLowerCase().includes(searchQuery) ||
-          item.diningTraffic.toLowerCase().includes(searchQuery)
+          item.diningTraffic.toLowerCase().includes(searchQuery) ||
+          item.diet.toLowerCase().includes(searchQuery)
         );
       });
 
@@ -1355,6 +1357,13 @@
 
         const rowBg = getDiningRowBg(item.dining);
 
+        // 飲食備註視覺醒目化
+        const dietText = (item.diet || '').trim();
+        let dietHtml = `<span class="text-slate-400 text-xs">無</span>`;
+        if (dietText && dietText !== '無') {
+          dietHtml = `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs">${escapeHtml(dietText)}</span>`;
+        }
+
         return `
           <tr class="${rowBg} transition border-b border-slate-200/60">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
@@ -1371,7 +1380,7 @@
               </div>
             </td>
             <td class="py-2.5 px-3 align-middle whitespace-nowrap">${busBtnHtml}</td>
-            <td class="py-2.5 px-3 text-slate-500 text-xs align-middle">${escapeHtml(item.diet || '-')}</td>
+            <td class="py-2.5 px-3 align-middle">${dietHtml}</td>
           </tr>
         `;
       }).join('');
@@ -1381,7 +1390,7 @@
       const name = item.name;
       const dining = item.dining || '';
       if ((dining.includes('弎食') && name === '李筱瑋') ||
-          (dining.includes('植田') && name === '胡靖韋') ||
+          (dining.includes('植田') && name === '盧建邦') ||
           (dining.includes('湫禾') && name === '莫惠萍') ||
           (dining.includes('麵五三') && name === '吳全峰')) {
         return 1;
@@ -1406,7 +1415,7 @@
       return '';
     }
 
-    /* --- [分頁5] 住宿安排：根據「住宿飯店」使用不同底色 --- */
+    /* --- [分頁5] 住宿安排：唯讀房號展示，僅參照資料庫 --- */
     function getLodgingRowBg(hotel) {
       if (!hotel) return 'bg-white hover:bg-slate-50';
       if (hotel.includes('知達')) return 'bg-sky-50/70 hover:bg-sky-100/80';
@@ -1449,6 +1458,22 @@
         );
       });
 
+      const getDatabaseRoom = (item) => {
+        return (item.roomNumber || '').trim();
+      };
+
+      const compareRoomNumber = (rA, rB) => {
+        if (!rA && !rB) return 0;
+        if (!rA) return 1;
+        if (!rB) return -1;
+        const numA = parseInt(rA, 10);
+        const numB = parseInt(rB, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          if (numA !== numB) return numA - numB;
+        }
+        return rA.localeCompare(rB, undefined, { numeric: true });
+      };
+
       filtered.sort((a, b) => {
         const hotelA = (a.hotel || '').includes('知達') ? 1 : 2;
         const hotelB = (b.hotel || '').includes('知達') ? 1 : 2;
@@ -1458,13 +1483,10 @@
         const contactB = isLodgingContact(b);
         if (contactA !== contactB) return contactA ? -1 : 1;
 
-        const roomTypeA = a.roomType || '';
-        const roomTypeB = b.roomType || '';
-        if (roomTypeA !== roomTypeB) return roomTypeA.localeCompare(roomTypeB);
-
-        const trafficRankA = (a.lodgingTraffic === '遊覽車') ? 1 : 2;
-        const trafficRankB = (b.lodgingTraffic === '遊覽車') ? 1 : 2;
-        if (trafficRankA !== trafficRankB) return trafficRankA - trafficRankB;
+        const roomA = getDatabaseRoom(a);
+        const roomB = getDatabaseRoom(b);
+        const roomDiff = compareRoomNumber(roomA, roomB);
+        if (roomDiff !== 0) return roomDiff;
 
         return compareStroke(a.name, b.name);
       });
@@ -1485,22 +1507,13 @@
           ? `<span class="block text-[10px] text-rose-600 font-bold leading-tight">（${item.hotel.includes('知達') ? '知達' : '正巧'} 聯絡人）</span>` 
           : '';
 
-        const currentRoomNum = checkinStore.roomNumbers[item.name] !== undefined 
-          ? checkinStore.roomNumbers[item.name] 
-          : (item.roomNumber || '');
+        const dbRoom = getDatabaseRoom(item);
 
-        let roomInputHtml = '';
-        if (isCheckinMode) {
-          roomInputHtml = `
-            <input type="text" value="${escapeHtml(currentRoomNum)}" onchange="updateRoomNumber('${escapeHtml(item.name)}', this.value)" placeholder="--" class="w-16 text-center text-xs py-0.5 border border-emerald-400 rounded bg-emerald-50/50 font-bold text-slate-800 outline-none">
-          `;
-        } else {
-          roomInputHtml = `
-            <span class="inline-block w-14 text-center font-mono text-xs font-semibold text-slate-600 bg-slate-100 py-0.5 rounded border border-slate-200">
-              ${escapeHtml(currentRoomNum || '--')}
-            </span>
-          `;
-        }
+        const roomDisplayHtml = `
+          <span class="inline-block w-14 text-center font-mono text-xs font-semibold text-slate-700 bg-white/80 py-0.5 rounded border border-slate-200 shadow-2xs">
+            ${escapeHtml(dbRoom || '--')}
+          </span>
+        `;
 
         let busBtnHtml = `<span class="text-slate-400 text-xs">${escapeHtml(item.lodgingTraffic || '-')}</span>`;
         if (item.lodgingTraffic === '遊覽車') {
@@ -1522,7 +1535,7 @@
           <tr class="${rowBg} transition border-b border-slate-200/60">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-middle">${idx + 1}</td>
             <td class="py-2.5 px-3 font-semibold text-slate-800 align-middle whitespace-nowrap">${escapeHtml(item.hotel)}</td>
-            <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">${roomInputHtml}</td>
+            <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">${roomDisplayHtml}</td>
             <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">
               <span class="px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-700 rounded-full border border-slate-200">${escapeHtml(item.roomType || '-')}</span>
             </td>
@@ -1728,7 +1741,7 @@
         processScheduleCSV(schedCsv);
         renderCurrentTab();
       } catch (e) {
-        console.log('採用本機 61 筆完整名冊順暢運行');
+        console.log('採用本機名冊順暢運行');
       }
     })();
   </script>

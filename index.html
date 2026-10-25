@@ -112,11 +112,28 @@
         </div>
       </div>
 
-      <!-- 快捷回報橫條：總表報到回報 -->
+      <!-- 快捷回報橫條：總表報到回報（按 白、紅、綠、接班人 分隊分別列示） -->
       <div id="overviewQuickBar" class="hidden bg-emerald-50/80 border border-emerald-200 rounded-lg p-2.5 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center space-x-2 text-xs text-emerald-900 font-medium">
-          <i class="fa-solid fa-clipboard-check text-emerald-600"></i>
-          <span>大會報到進度：<strong id="overviewCheckinStats" class="text-emerald-700 font-bold">0 / 0</strong> 位</span>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-emerald-950 font-medium">
+          <span class="flex items-center space-x-1.5 font-bold text-slate-800 mr-1">
+            <i class="fa-solid fa-clipboard-check text-emerald-600"></i>
+            <span>大會報到進度：</span>
+          </span>
+          <span class="px-2 py-0.5 rounded bg-white text-slate-800 border border-slate-300 shadow-2xs font-medium">
+            白：<strong id="checkinStats-白" class="font-bold text-slate-900">0/0</strong>
+          </span>
+          <span class="px-2 py-0.5 rounded bg-rose-50 text-rose-900 border border-rose-300 shadow-2xs font-medium">
+            紅：<strong id="checkinStats-紅" class="font-bold text-rose-700">0/0</strong>
+          </span>
+          <span class="px-2 py-0.5 rounded bg-emerald-100/70 text-emerald-950 border border-emerald-300 shadow-2xs font-medium">
+            綠：<strong id="checkinStats-綠" class="font-bold text-emerald-700">0/0</strong>
+          </span>
+          <span class="px-2 py-0.5 rounded bg-amber-50 text-amber-950 border border-amber-300 shadow-2xs font-medium">
+            接班人：<strong id="checkinStats-接班人" class="font-bold text-amber-800">0/0</strong>
+          </span>
+          <span class="text-slate-500 ml-1 text-[11px]">
+            (總計: <strong id="overviewCheckinStatsTotal" class="text-emerald-700 font-bold">0/0</strong>)
+          </span>
         </div>
         <button onclick="copyOverviewAttendance()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
           <i class="fa-regular fa-copy"></i>
@@ -371,6 +388,12 @@
       return (a || '').localeCompare((b || ''), 'zh-Hant-TW', { collation: 'stroke' });
     }
 
+    /* 判斷是否為司機人員（司機不列入總表、交通、餐飲） */
+    function isDriver(item) {
+      if (!item || !item.name) return false;
+      return item.name.includes('司機') || item.team === '其他';
+    }
+
     /* 嚴格 RFC 4180 CSV 解析器 */
     function parseCSV(text) {
       const rows = [];
@@ -614,7 +637,6 @@
         }
       ];
 
-      // 63 筆全員真實名冊（含完整「飲食注意事項」，1:1 精確同步）
       const fullList = [
         { team: '綠', name: '何琇菱', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '302', roomGroup: '知達-2人房_06' },
         { team: '白', name: '吳全峰', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '506', roomGroup: '知達-2人房_16' },
@@ -713,13 +735,13 @@
       const idxDining = headers.findIndex(h => h.includes('餐廳') && !h.includes('交通'));
       const idxDiningTraffic = headers.findIndex(h => h === '餐廳-交通' || h.includes('餐廳交通'));
       
-      // 精準鎖定第 M 欄「飲食注意事項」
+      // 精確鎖定「飲食注意事項」欄位
       let idxDiet = headers.findIndex(h => h === '飲食注意事項');
       if (idxDiet === -1) {
         idxDiet = headers.findIndex(h => h.includes('飲食') || h.includes('特殊飲食'));
       }
       if (idxDiet === -1) {
-        idxDiet = 12; // 備用防呆：第 M 欄（索引 12）
+        idxDiet = 12; // 備用防呆：第 M 欄
       }
 
       const idxHotel = headers.findIndex(h => h.includes('住宿') && !h.includes('交通') && !h.includes('房型'));
@@ -1017,7 +1039,7 @@
       }).join('');
     }
 
-    /* --- [分頁2] 總表：根據「隊別」分配底色 --- */
+    /* --- [分頁2] 總表：排除司機，依隊別底色，分隊別統計 --- */
     function getOverviewRowBg(team) {
       if (team === '白') return 'bg-slate-50/70 hover:bg-slate-100/80';
       if (team === '紅') return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1040,11 +1062,28 @@
         </tr>
       `;
 
-      let selfList = rawDirectoryData.filter(d => d.relation === '本人');
-      let checkedCount = selfList.filter(d => !!checkinStore.overview[d.name]).length;
-      document.getElementById('overviewCheckinStats').textContent = `${checkedCount} / ${selfList.length}`;
+      // 總表排查排除司機
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
+      const selfList = activeMembers.filter(d => d.relation === '本人');
 
-      let filtered = rawDirectoryData.filter(item => {
+      // 分隊別統計：白、紅、綠、接班人
+      const teams = ['白', '紅', '綠', '接班人'];
+      let totalChecked = 0;
+      let totalEligible = 0;
+
+      teams.forEach(t => {
+        const teamSelf = selfList.filter(d => d.team === t);
+        const teamChecked = teamSelf.filter(d => !!checkinStore.overview[d.name]).length;
+        totalChecked += teamChecked;
+        totalEligible += teamSelf.length;
+        const elem = document.getElementById(`checkinStats-${t}`);
+        if (elem) elem.textContent = `${teamChecked}/${teamSelf.length}`;
+      });
+
+      const totalElem = document.getElementById('overviewCheckinStatsTotal');
+      if (totalElem) totalElem.textContent = `${totalChecked}/${totalEligible}`;
+
+      let filtered = activeMembers.filter(item => {
         if (!searchQuery) return true;
         return (
           item.name.toLowerCase().includes(searchQuery) ||
@@ -1056,7 +1095,7 @@
         );
       });
 
-      const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4, '其他': 5 };
+      const teamOrder = { '白': 1, '紅': 2, '綠': 3, '接班人': 4 };
       filtered.sort((a, b) => {
         const orderA = teamOrder[a.team] || 99;
         const orderB = teamOrder[b.team] || 99;
@@ -1095,8 +1134,7 @@
           '白': 'bg-slate-100 text-slate-700 border-slate-300',
           '紅': 'bg-rose-100 text-rose-800 border-rose-300',
           '綠': 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          '接班人': 'bg-amber-100 text-amber-800 border-amber-300',
-          '其他': 'bg-slate-100 text-slate-500 border-slate-200'
+          '接班人': 'bg-amber-100 text-amber-800 border-amber-300'
         }[item.team] || 'bg-slate-50 text-slate-600 border-slate-200';
 
         const rowBg = getOverviewRowBg(item.team);
@@ -1121,7 +1159,7 @@
       }).join('');
     }
 
-    /* --- [分頁3] 交通安排：根據「回程」交通方式使用不同底色 --- */
+    /* --- [分頁3] 交通安排：排除司機 --- */
     function getTrafficBackRowBg(trafficBack) {
       if (!trafficBack) return 'bg-white hover:bg-slate-50';
       if (trafficBack.includes('遊覽車')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
@@ -1131,9 +1169,10 @@
     }
 
     function renderTrafficTab(thead, tbody, countBadge) {
-      const busOutMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車');
-      const busBackMembers = rawDirectoryData.filter(d => d.trafficBack === '遊覽車');
-      const busInsuranceMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車' || d.trafficBack === '遊覽車');
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
+      const busOutMembers = activeMembers.filter(d => d.trafficGo === '遊覽車');
+      const busBackMembers = activeMembers.filter(d => d.trafficBack === '遊覽車');
+      const busInsuranceMembers = activeMembers.filter(d => d.trafficGo === '遊覽車' || d.trafficBack === '遊覽車');
 
       const outArrived = busOutMembers.filter(d => !!checkinStore.trafficOut[d.name]).length;
       const backArrived = busBackMembers.filter(d => !!checkinStore.trafficBack[d.name]).length;
@@ -1167,7 +1206,7 @@
         </tr>
       `;
 
-      let filtered = rawDirectoryData.filter(item => {
+      let filtered = activeMembers.filter(item => {
         if (!searchQuery) return true;
         return (
           item.name.toLowerCase().includes(searchQuery) ||
@@ -1280,7 +1319,7 @@
       }).join('');
     }
 
-    /* --- [分頁4] 餐飲安排：呈現正確之「飲食注意事項」 --- */
+    /* --- [分頁4] 餐飲安排：排除司機，呈現特殊飲食 --- */
     function getDiningRowBg(dining) {
       if (!dining) return 'bg-white hover:bg-slate-50';
       if (dining.includes('弎食')) return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1301,15 +1340,16 @@
         </tr>
       `;
 
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
       const diningGroups = ['弎食', '植田', '湫禾', '麵五三'];
       diningGroups.forEach(grp => {
-        const members = rawDirectoryData.filter(d => (d.dining || '').includes(grp));
+        const members = activeMembers.filter(d => (d.dining || '').includes(grp));
         const arrived = members.filter(d => !!checkinStore.dining[d.name]).length;
         const elem = document.getElementById(`diningProgress-${grp}`);
         if (elem) elem.textContent = `${arrived} / ${members.length}`;
       });
 
-      let filtered = rawDirectoryData.filter(item => {
+      let filtered = activeMembers.filter(item => {
         if (!item.dining || item.dining.toUpperCase() === 'NO') return false;
         if (!searchQuery) return true;
         return (
@@ -1357,7 +1397,6 @@
 
         const rowBg = getDiningRowBg(item.dining);
 
-        // 飲食備註視覺醒目化
         const dietText = (item.diet || '').trim();
         let dietHtml = `<span class="text-slate-400 text-xs">無</span>`;
         if (dietText && dietText !== '無') {
@@ -1415,7 +1454,7 @@
       return '';
     }
 
-    /* --- [分頁5] 住宿安排：唯讀房號展示，僅參照資料庫 --- */
+    /* --- [分頁5] 住宿安排：保留司機於知達208房 --- */
     function getLodgingRowBg(hotel) {
       if (!hotel) return 'bg-white hover:bg-slate-50';
       if (hotel.includes('知達')) return 'bg-sky-50/70 hover:bg-sky-100/80';
@@ -1580,37 +1619,55 @@
       });
     }
 
-    /* --- [總表] 複製報到名單 --- */
+    /* --- [總表] 複製報到名單（排除司機，分 白、紅、綠、接班人 列示） --- */
     function copyOverviewAttendance() {
       const now = getNowFormatted();
-      const selfList = rawDirectoryData.filter(d => d.relation === '本人');
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
+      const selfList = activeMembers.filter(d => d.relation === '本人');
+      
       const unarrived = selfList.filter(d => !checkinStore.overview[d.name]);
       const arrived = selfList.filter(d => !!checkinStore.overview[d.name]);
 
+      const teams = ['白', '紅', '綠', '接班人'];
+
       let text = `時間：${now}\n【大會報到名單】\n\n`;
+
       text += `【尚未報到名單】 (${unarrived.length}位)\n`;
       if (unarrived.length === 0) {
         text += `（無，全員皆已完成報到！）🎉\n`;
       } else {
-        text += unarrived.map((d, i) => `${i + 1}. ${d.name} (${d.team}隊)`).join('\n') + '\n';
+        teams.forEach(t => {
+          const list = unarrived.filter(d => d.team === t);
+          if (list.length > 0) {
+            text += `[${t}隊 - ${list.length}位]\n`;
+            text += list.map((d, i) => ` ${i + 1}. ${d.name}`).join('\n') + '\n';
+          }
+        });
       }
 
-      text += `\n`;
+      text += `\n`; // 間隔 1 行
 
       text += `【已報到人員名單】 (${arrived.length}位)\n`;
       if (arrived.length === 0) {
         text += `（尚無人完成報到）`;
       } else {
-        text += arrived.map((d, i) => `${i + 1}. ${d.name} (${d.team}隊)`).join('\n');
+        teams.forEach(t => {
+          const list = arrived.filter(d => d.team === t);
+          if (list.length > 0) {
+            text += `[${t}隊 - ${list.length}位]\n`;
+            text += list.map((d, i) => ` ${i + 1}. ${d.name}`).join('\n') + '\n';
+          }
+        });
       }
 
       copyToClipboard(text);
     }
 
-    /* --- [交通] 複製旅責險繳費狀況 --- */
+    /* --- [交通] 複製旅責險繳費狀況（排除司機） --- */
     function copyInsuranceStatus() {
       const now = getNowFormatted();
-      const busMembers = rawDirectoryData.filter(d => d.trafficGo === '遊覽車' || d.trafficBack === '遊覽車');
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
+      const busMembers = activeMembers.filter(d => d.trafficGo === '遊覽車' || d.trafficBack === '遊覽車');
       
       const unpaidList = busMembers.filter(d => (checkinStore.trafficInsurance[d.name] || '尚未繳') === '尚未繳');
       const paidList = busMembers.filter(d => (checkinStore.trafficInsurance[d.name] || '尚未繳') !== '尚未繳');
@@ -1638,7 +1695,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [交通] 複製去程 / 回程名單 --- */
+    /* --- [交通] 複製去程 / 回程名單（排除司機） --- */
     function copyTrafficAll(direction) {
       const now = getNowFormatted();
       const isOut = (direction === 'out');
@@ -1646,7 +1703,8 @@
       const trafficField = isOut ? 'trafficGo' : 'trafficBack';
       const label = isOut ? '去程點名 (台中高鐵→正巧)' : '回程點名 (正巧→台中高鐵)';
 
-      const busMembers = rawDirectoryData.filter(d => d[trafficField] === '遊覽車');
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
+      const busMembers = activeMembers.filter(d => d[trafficField] === '遊覽車');
       const unarrived = busMembers.filter(d => !checkinStore[storeKey][d.name]);
       const arrived = busMembers.filter(d => !!checkinStore[storeKey][d.name]);
 
@@ -1670,10 +1728,11 @@
       copyToClipboard(text);
     }
 
-    /* --- [餐飲] 複製該餐廳名單 --- */
+    /* --- [餐飲] 複製該餐廳名單（排除司機） --- */
     function copyDiningAttendance(restaurant) {
       const now = getNowFormatted();
-      const members = rawDirectoryData.filter(d => (d.dining || '').includes(restaurant));
+      const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
+      const members = activeMembers.filter(d => (d.dining || '').includes(restaurant));
       const unarrived = members.filter(d => !checkinStore.dining[d.name]);
       const arrived = members.filter(d => !!checkinStore.dining[d.name]);
 
@@ -1697,7 +1756,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [住宿] 複製該住宿點名單 --- */
+    /* --- [住宿] 複製該住宿點名單（知達組包含司機，正巧維持） --- */
     function copyLodgingAttendance(hotel) {
       const now = getNowFormatted();
       const members = rawDirectoryData.filter(d => (d.hotel || '').includes(hotel));

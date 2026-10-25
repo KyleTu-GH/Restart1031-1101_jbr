@@ -141,11 +141,19 @@
         </button>
       </div>
 
-      <!-- 快捷回報橫條：交通安排回報 -->
+      <!-- 快捷回報橫條：交通安排回報（新增「正巧文旅」導航） -->
       <div id="trafficQuickBar" class="hidden bg-emerald-50/80 border border-emerald-200 rounded-lg p-2.5 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center space-x-2 text-xs text-emerald-900 font-medium">
-          <i class="fa-solid fa-bus text-emerald-600"></i>
-          <span>遊覽車專責車長：<strong>廖培芯</strong> ｜ 去程：<span id="trafficOutSummaryBadge" class="font-bold text-emerald-700">0/0</span> ｜ 回程：<span id="trafficBackSummaryBadge" class="font-bold text-emerald-700">0/0</span></span>
+        <div class="flex items-center space-x-2.5 text-xs text-emerald-900 font-medium">
+          <div class="flex items-center space-x-1.5">
+            <i class="fa-solid fa-bus text-emerald-600"></i>
+            <span class="font-bold text-slate-900">正巧文旅</span>
+            <a href="https://maps.app.goo.gl/vmJmVTdyx5MDzBDJA" target="_blank" rel="noopener noreferrer" class="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition flex items-center space-x-0.5 shadow-2xs">
+              <i class="fa-solid fa-location-dot"></i>
+              <span>導航</span>
+            </a>
+          </div>
+          <span class="text-slate-300">｜</span>
+          <span>專責車長：<strong>廖培芯</strong> ｜ 去程：<span id="trafficOutSummaryBadge" class="font-bold text-emerald-700">0/0</span> ｜ 回程：<span id="trafficBackSummaryBadge" class="font-bold text-emerald-700">0/0</span></span>
         </div>
         <div class="flex items-center space-x-1.5">
           <button onclick="copyInsuranceStatus()" class="px-2.5 py-1 bg-white hover:bg-indigo-50 text-indigo-800 border border-indigo-300 rounded text-xs font-semibold flex items-center space-x-1 shadow-2xs transition">
@@ -388,13 +396,11 @@
       return (a || '').localeCompare((b || ''), 'zh-Hant-TW', { collation: 'stroke' });
     }
 
-    /* 判斷是否為司機人員（司機不列入總表、交通、餐飲） */
     function isDriver(item) {
       if (!item || !item.name) return false;
       return item.name.includes('司機') || item.team === '其他';
     }
 
-    /* 嚴格 RFC 4180 CSV 解析器 */
     function parseCSV(text) {
       const rows = [];
       let currentRow = [];
@@ -440,7 +446,6 @@
       return rows;
     }
 
-    /* 複合 Key: 飯店 + 房型 + 分組 判定同房室友 */
     function computeRoommates(list) {
       const groupMap = {};
       list.forEach(item => {
@@ -470,7 +475,6 @@
       });
     }
 
-    /* 63 筆全員真實名冊保底資料集（與試算表最新母檔第 V 欄「補充-手輸」1:1 精確同步） */
     function initFallbackData() {
       rawScheduleData = [
         {
@@ -637,7 +641,6 @@
         }
       ];
 
-      // 63 筆成員（含母表第 V 欄手輸補充說明）
       const fullList = [
         { team: '綠', name: '何琇菱', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '弎食鉄板', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '302', roomGroup: '知達-2人房_06', note: '' },
         { team: '白', name: '吳全峰', relation: '本人', trafficGo: '遊覽車', trafficBack: '遊覽車', trafficOverviewCombo: '遊覽車/遊覽車', dining: '麵五三屋', diningTraffic: '遊覽車', diet: '無', hotel: '知達', lodgingTraffic: '遊覽車', roomType: '2人房', roomNumber: '506', roomGroup: '知達-2人房_16', note: '' },
@@ -757,13 +760,12 @@
         idxRoomGroup = 20;
       }
 
-      // 嚴格對齊母表第 V 欄（補充-手輸）
       let idxNote = headers.findIndex(h => h === '補充-手輸');
       if (idxNote === -1) {
         idxNote = headers.findIndex(h => h.includes('補充') || h.includes('備註說明'));
       }
       if (idxNote === -1) {
-        idxNote = 21; // 第 V 欄
+        idxNote = 21;
       }
 
       const list = [];
@@ -1050,7 +1052,7 @@
       }).join('');
     }
 
-    /* --- [分頁2] 總表：最右側新增「備註說明」 --- */
+    /* --- [分頁2] 總表：最右側「備註說明」 --- */
     function getOverviewRowBg(team) {
       if (team === '白') return 'bg-slate-50/70 hover:bg-slate-100/80';
       if (team === '紅') return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1338,7 +1340,7 @@
       }).join('');
     }
 
-    /* --- [分頁4] 餐飲安排：呈現正確之「飲食注意事項」 --- */
+    /* --- [分頁4] 餐飲安排：呈現特殊飲食 --- */
     function getDiningRowBg(dining) {
       if (!dining) return 'bg-white hover:bg-slate-50';
       if (dining.includes('弎食')) return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1638,7 +1640,7 @@
       });
     }
 
-    /* --- [總表] 複製報到名單（排除司機，分 白、紅、綠、接班人 列示） --- */
+    /* --- [總表] 複製報到名單 --- */
     function copyOverviewAttendance() {
       const now = getNowFormatted();
       const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
@@ -1682,7 +1684,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [交通] 複製旅責險繳費狀況（排除司機） --- */
+    /* --- [交通] 複製旅責險繳費狀況 --- */
     function copyInsuranceStatus() {
       const now = getNowFormatted();
       const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
@@ -1714,7 +1716,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [交通] 複製去程 / 回程名單（排除司機） --- */
+    /* --- [交通] 複製去程 / 回程名單 --- */
     function copyTrafficAll(direction) {
       const now = getNowFormatted();
       const isOut = (direction === 'out');
@@ -1747,7 +1749,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [餐飲] 複製該餐廳名單（排除司機） --- */
+    /* --- [餐飲] 複製該餐廳名單 --- */
     function copyDiningAttendance(restaurant) {
       const now = getNowFormatted();
       const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
@@ -1775,7 +1777,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [住宿] 複製該住宿點名單（知達組包含司機，正巧維持） --- */
+    /* --- [住宿] 複製該住宿點名單 --- */
     function copyLodgingAttendance(hotel) {
       const now = getNowFormatted();
       const members = rawDirectoryData.filter(d => (d.hotel || '').includes(hotel));

@@ -141,7 +141,7 @@
         </button>
       </div>
 
-      <!-- 快捷回報橫條：交通安排回報（新增「正巧文旅」導航） -->
+      <!-- 快捷回報橫條：交通安排回報 -->
       <div id="trafficQuickBar" class="hidden bg-emerald-50/80 border border-emerald-200 rounded-lg p-2.5 flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center space-x-2.5 text-xs text-emerald-900 font-medium">
           <div class="flex items-center space-x-1.5">
@@ -234,7 +234,7 @@
         <div class="bg-indigo-50/60 border border-indigo-200 rounded-lg p-2.5 flex flex-col justify-between text-xs space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="font-bold text-indigo-900 flex items-center gap-1.5">
-              <i class="fa-solid fa-stroopwafel text-indigo-600"></i>麵五三屋台拉麵
+              <i class="fa-solid fa-包子 text-indigo-600"></i>麵五三屋台拉麵
             </span>
             <div class="space-x-1">
               <a href="https://maps.app.goo.gl/9KN682SxLpZ6bgrXA" target="_blank" rel="noopener noreferrer" class="px-1.5 py-0.5 bg-indigo-600 text-white rounded text-[10px]"><i class="fa-solid fa-location-dot"></i> 導航</a>
@@ -322,6 +322,7 @@
     let rawDirectoryData = [];
     let rawScheduleData = [];
 
+    // 簽到結構（儲存打卡時間 HH:mm 字串，空代表未打卡）
     let checkinStore = {
       overview: {},
       trafficOut: {},
@@ -372,6 +373,14 @@
       return `${yy}/${mm}/${dd} ${hh}:${min}`;
     }
 
+    // 取得當前 HH:mm 時間字串
+    function getCurrentHHmm() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      return `${hh}:${min}`;
+    }
+
     function updateHeaderTimestamp() {
       const elem = document.getElementById('updateTimestampText');
       if (elem) {
@@ -401,6 +410,7 @@
       return item.name.includes('司機') || item.team === '其他';
     }
 
+    /* 嚴格 RFC 4180 CSV 解析器 */
     function parseCSV(text) {
       const rows = [];
       let currentRow = [];
@@ -446,6 +456,7 @@
       return rows;
     }
 
+    /* 複合 Key: 飯店 + 房型 + 分組 判定同房室友 */
     function computeRoommates(list) {
       const groupMap = {};
       list.forEach(item => {
@@ -475,6 +486,7 @@
       });
     }
 
+    /* 63 筆全員真實名冊保底資料集（含完整「飲食注意事項」與手輸備註） */
     function initFallbackData() {
       rawScheduleData = [
         {
@@ -942,12 +954,17 @@
       }
     }
 
+    /* 報到/點名切換核心：點選時寫入當下 HH:mm 時間，取消時清空 */
     function toggleCheckin(type, name) {
       if (!isCheckinMode) {
         alert('請先點擊右上角「開啟點名模式」輸入密碼解鎖後再進行操作！');
         return;
       }
-      checkinStore[type][name] = !checkinStore[type][name];
+      if (checkinStore[type][name]) {
+        delete checkinStore[type][name];
+      } else {
+        checkinStore[type][name] = getCurrentHHmm();
+      }
       saveCheckinStore();
       renderCurrentTab();
     }
@@ -992,14 +1009,21 @@
       return clean;
     }
 
-    /* --- [分頁1] 活動流程 --- */
+    /* --- [分頁1] 活動流程：10/31 與 11/01 不同底色，日期第一筆黑色粗體其餘灰階，時間放大2級 --- */
+    function getScheduleRowBg(day) {
+      if (!day) return 'bg-white hover:bg-slate-50';
+      if (day.includes('10/31')) return 'bg-emerald-50/60 hover:bg-emerald-100/70';
+      if (day.includes('11/01')) return 'bg-amber-50/60 hover:bg-amber-100/70';
+      return 'bg-slate-50/60 hover:bg-slate-100/70';
+    }
+
     function renderScheduleTab(thead, tbody, countBadge) {
       thead.innerHTML = `
         <tr>
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
           <th class="py-2.5 px-2 w-24 whitespace-nowrap">日期</th>
-          <th class="py-2.5 px-2 w-16 text-center whitespace-nowrap">起時</th>
-          <th class="py-2.5 px-2 w-16 text-center whitespace-nowrap">迄時</th>
+          <th class="py-2.5 px-2 w-20 text-center whitespace-nowrap">起時</th>
+          <th class="py-2.5 px-2 w-20 text-center whitespace-nowrap">迄時</th>
           <th class="py-2.5 px-2 w-14 text-center whitespace-nowrap">時長</th>
           <th class="py-2.5 px-2 w-28 break-words">地點</th>
           <th class="py-2.5 px-3 w-[230px] max-w-[16rem]">活動</th>
@@ -1024,6 +1048,9 @@
         return;
       }
 
+      // 追蹤同日的第一筆資料
+      let lastRenderedDay = '';
+
       tbody.innerHTML = filtered.map((item, idx) => {
         const formattedAct = (item.activity || '')
           .split('\n')
@@ -1037,14 +1064,24 @@
           .map(l => `<div class="leading-relaxed py-0.5">${escapeHtml(l)}</div>`)
           .join('');
 
+        const rowBg = getScheduleRowBg(item.day);
+
+        // 日期樣式：當日第一筆黑色粗體，其餘灰階正常字形
+        const isFirstOfDay = (item.day !== lastRenderedDay);
+        lastRenderedDay = item.day;
+        const dayClass = isFirstOfDay 
+          ? 'text-slate-900 font-bold text-xs' 
+          : 'text-slate-400 font-normal text-xs';
+
         return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <tr class="${rowBg} transition border-b border-slate-200/70">
             <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px] align-top">${idx + 1}</td>
-            <td class="py-2.5 px-2 font-semibold text-slate-800 whitespace-nowrap align-top">${escapeHtml(item.day)}</td>
-            <td class="py-2.5 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-slate-900">${formatStandardTime(item.startTime)}</td>
-            <td class="py-2.5 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-slate-900">${formatStandardTime(item.endTime)}</td>
-            <td class="py-2.5 px-2 text-center text-slate-500 font-mono align-top whitespace-nowrap">${escapeHtml(item.duration ? `${item.duration}分` : '-')}</td>
-            <td class="py-2.5 px-2 text-slate-700 break-words leading-snug align-top">${escapeHtml(item.location || '-')}</td>
+            <td class="py-2.5 px-2 whitespace-nowrap align-top ${dayClass}">${escapeHtml(item.day)}</td>
+            <!-- 時間放大2級（約16px text-base），粗體不折行 -->
+            <td class="py-2 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-base text-slate-900">${formatStandardTime(item.startTime)}</td>
+            <td class="py-2 px-2 text-center align-top whitespace-nowrap font-mono font-bold text-base text-slate-900">${formatStandardTime(item.endTime)}</td>
+            <td class="py-2.5 px-2 text-center text-slate-500 font-mono align-top whitespace-nowrap text-xs">${escapeHtml(item.duration ? `${item.duration}分` : '-')}</td>
+            <td class="py-2.5 px-2 text-slate-700 break-words leading-snug align-top text-xs">${escapeHtml(item.location || '-')}</td>
             <td class="py-2.5 px-3 text-slate-900 font-bold text-sm break-words align-top leading-snug">${formattedAct}</td>
             <td class="py-2.5 px-3 text-slate-700 text-sm align-top">${formattedNote}</td>
           </tr>
@@ -1052,7 +1089,7 @@
       }).join('');
     }
 
-    /* --- [分頁2] 總表：最右側「備註說明」 --- */
+    /* --- [分頁2] 總表：點選報到顯示 HH:mm 時間 --- */
     function getOverviewRowBg(team) {
       if (team === '白') return 'bg-slate-50/70 hover:bg-slate-100/80';
       if (team === '紅') return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1065,7 +1102,7 @@
       thead.innerHTML = `
         <tr>
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
-          <th class="py-2.5 px-2 w-20 text-center">報到</th>
+          <th class="py-2.5 px-2 w-24 text-center">報到</th>
           <th class="py-2.5 px-3 w-28">姓名</th>
           <th class="py-2.5 px-2 w-20">隊別</th>
           <th class="py-2.5 px-3 w-28">交通-去/回</th>
@@ -1129,16 +1166,17 @@
 
       tbody.innerHTML = filtered.map((item, idx) => {
         const isSelf = (item.relation === '本人');
-        const isChecked = !!checkinStore.overview[item.name];
+        const checkinTime = checkinStore.overview[item.name];
 
         let checkinBtnHtml = `<span class="text-slate-300">-</span>`;
         if (isSelf) {
-          const btnClass = isChecked 
-            ? 'bg-emerald-600 text-white font-semibold' 
+          const btnClass = checkinTime 
+            ? 'bg-emerald-600 text-white font-semibold shadow-2xs font-mono' 
             : 'bg-white text-slate-600 border border-slate-300 hover:border-slate-400';
+          const label = checkinTime ? `✔ ${checkinTime}` : '未報到';
           checkinBtnHtml = `
-            <button onclick="toggleCheckin('overview', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
-              ${isChecked ? '✔ 已報到' : '未報到'}
+            <button onclick="toggleCheckin('overview', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition whitespace-nowrap ${btnClass}">
+              ${label}
             </button>
           `;
         }
@@ -1180,7 +1218,7 @@
       }).join('');
     }
 
-    /* --- [分頁3] 交通安排：排除司機 --- */
+    /* --- [分頁3] 交通安排：去/回程點名顯示 HH:mm 時間 --- */
     function getTrafficBackRowBg(trafficBack) {
       if (!trafficBack) return 'bg-white hover:bg-slate-50';
       if (trafficBack.includes('遊覽車')) return 'bg-emerald-50/70 hover:bg-emerald-100/80';
@@ -1271,13 +1309,14 @@
 
         let goBtnHtml = `<span class="text-slate-500 font-medium">${escapeHtml(item.trafficGo || '-')}</span>`;
         if (item.trafficGo === '遊覽車') {
-          const isArrived = !!checkinStore.trafficOut[item.name];
-          const btnClass = isArrived ? 'bg-emerald-600 text-white font-semibold' : 'bg-white text-slate-600 border border-slate-300';
+          const goTime = checkinStore.trafficOut[item.name];
+          const btnClass = goTime ? 'bg-emerald-600 text-white font-semibold font-mono shadow-2xs' : 'bg-white text-slate-600 border border-slate-300';
+          const label = goTime ? `✔ ${goTime}` : '未上車';
           goBtnHtml = `
             <div class="flex items-center space-x-1.5 whitespace-nowrap">
               <span class="font-semibold text-slate-800">遊覽車</span>
               <button onclick="toggleCheckin('trafficOut', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
-                ${isArrived ? '✔ 已上車' : '未上車'}
+                ${label}
               </button>
             </div>
           `;
@@ -1311,13 +1350,14 @@
 
         let backBtnHtml = `<span class="text-slate-500 font-medium">${escapeHtml(item.trafficBack || '-')}</span>`;
         if (item.trafficBack === '遊覽車') {
-          const isArrived = !!checkinStore.trafficBack[item.name];
-          const btnClass = isArrived ? 'bg-emerald-600 text-white font-semibold' : 'bg-white text-slate-600 border border-slate-300';
+          const backTime = checkinStore.trafficBack[item.name];
+          const btnClass = backTime ? 'bg-emerald-600 text-white font-semibold font-mono shadow-2xs' : 'bg-white text-slate-600 border border-slate-300';
+          const label = backTime ? `✔ ${backTime}` : '未上車';
           backBtnHtml = `
             <div class="flex items-center space-x-1.5 whitespace-nowrap">
               <span class="font-semibold text-slate-800">遊覽車</span>
               <button onclick="toggleCheckin('trafficBack', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${btnClass}">
-                ${isArrived ? '✔ 已上車' : '未上車'}
+                ${label}
               </button>
             </div>
           `;
@@ -1340,7 +1380,7 @@
       }).join('');
     }
 
-    /* --- [分頁4] 餐飲安排：呈現特殊飲食 --- */
+    /* --- [分頁4] 餐飲安排：點名顯示 HH:mm 時間 --- */
     function getDiningRowBg(dining) {
       if (!dining) return 'bg-white hover:bg-slate-50';
       if (dining.includes('弎食')) return 'bg-rose-50/70 hover:bg-rose-100/80';
@@ -1355,7 +1395,7 @@
         <tr>
           <th class="py-2.5 px-2 text-center w-8 text-slate-400">#</th>
           <th class="py-2.5 px-3 w-36">餐廳名稱</th>
-          <th class="py-2.5 px-3 w-32">姓名 (入席點名)</th>
+          <th class="py-2.5 px-3 w-36">姓名 (入席點名)</th>
           <th class="py-2.5 px-3 w-32">接駁車點名</th>
           <th class="py-2.5 px-3 flex-1 min-w-[14rem]">特殊飲食 / 備註</th>
         </tr>
@@ -1401,17 +1441,19 @@
       }
 
       tbody.innerHTML = filtered.map((item, idx) => {
-        const isArrived = !!checkinStore.dining[item.name];
-        const diningBtnClass = isArrived ? 'bg-emerald-600 text-white font-semibold' : 'bg-white text-slate-600 border border-slate-300';
+        const diningTime = checkinStore.dining[item.name];
+        const diningBtnClass = diningTime ? 'bg-emerald-600 text-white font-semibold font-mono shadow-2xs' : 'bg-white text-slate-600 border border-slate-300';
+        const diningLabel = diningTime ? `✔ ${diningTime}` : '未入席';
         const roleNote = getDiningRoleLabel(item);
 
         let busBtnHtml = `<span class="text-slate-400 text-xs">${escapeHtml(item.diningTraffic || '-')}</span>`;
         if (item.diningTraffic === '遊覽車') {
-          const isBusArrived = !!checkinStore.diningBus[item.name];
-          const busClass = isBusArrived ? 'bg-emerald-600 text-white font-semibold' : 'bg-white text-slate-600 border border-slate-300';
+          const busTime = checkinStore.diningBus[item.name];
+          const busClass = busTime ? 'bg-emerald-600 text-white font-semibold font-mono shadow-2xs' : 'bg-white text-slate-600 border border-slate-300';
+          const busLabel = busTime ? `✔ ${busTime}` : '未上車';
           busBtnHtml = `
             <button onclick="toggleCheckin('diningBus', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${busClass}">
-              ${isBusArrived ? '✔ 已接駁' : '未上車'}
+              ${busLabel}
             </button>
           `;
         }
@@ -1435,7 +1477,7 @@
                   ${roleNote}
                 </div>
                 <button onclick="toggleCheckin('dining', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${diningBtnClass}">
-                  ${isArrived ? '✔ 已入席' : '未入席'}
+                  ${diningLabel}
                 </button>
               </div>
             </td>
@@ -1475,7 +1517,7 @@
       return '';
     }
 
-    /* --- [分頁5] 住宿安排：唯讀房號展示，僅參照資料庫 --- */
+    /* --- [分頁5] 住宿安排：抵達點名顯示 HH:mm 時間 --- */
     function getLodgingRowBg(hotel) {
       if (!hotel) return 'bg-white hover:bg-slate-50';
       if (hotel.includes('知達')) return 'bg-sky-50/70 hover:bg-sky-100/80';
@@ -1559,8 +1601,9 @@
       }
 
       tbody.innerHTML = filtered.map((item, idx) => {
-        const isArrived = !!checkinStore.lodging[item.name];
-        const arriveBtnClass = isArrived ? 'bg-emerald-600 text-white font-semibold' : 'bg-white text-slate-600 border border-slate-300';
+        const arriveTime = checkinStore.lodging[item.name];
+        const arriveBtnClass = arriveTime ? 'bg-emerald-600 text-white font-semibold font-mono shadow-2xs' : 'bg-white text-slate-600 border border-slate-300';
+        const arriveLabel = arriveTime ? `✔ ${arriveTime}` : '未抵達';
 
         const isContact = isLodgingContact(item);
         const contactBadge = isContact 
@@ -1577,13 +1620,14 @@
 
         let busBtnHtml = `<span class="text-slate-400 text-xs">${escapeHtml(item.lodgingTraffic || '-')}</span>`;
         if (item.lodgingTraffic === '遊覽車') {
-          const isBusArrived = !!checkinStore.lodgingBus[item.name];
-          const busClass = isBusArrived ? 'bg-emerald-600 text-white font-semibold' : 'bg-white text-slate-600 border border-slate-300';
+          const busTime = checkinStore.lodgingBus[item.name];
+          const busClass = busTime ? 'bg-emerald-600 text-white font-semibold font-mono shadow-2xs' : 'bg-white text-slate-600 border border-slate-300';
+          const busLabel = busTime ? `✔ ${busTime}` : '未上車';
           busBtnHtml = `
             <div class="flex items-center justify-end space-x-1.5 whitespace-nowrap">
               <span class="text-xs font-semibold text-slate-700">遊覽車</span>
               <button onclick="toggleCheckin('lodgingBus', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${busClass}">
-                ${isBusArrived ? '✔ 已上車' : '未上車'}
+                ${busLabel}
               </button>
             </div>
           `;
@@ -1606,7 +1650,7 @@
                   ${contactBadge}
                 </div>
                 <button onclick="toggleCheckin('lodging', '${escapeHtml(item.name)}')" class="px-2 py-0.5 rounded text-xs transition ${arriveBtnClass}">
-                  ${isArrived ? '✔ 已抵達' : '未抵達'}
+                  ${arriveLabel}
                 </button>
               </div>
             </td>
@@ -1640,7 +1684,7 @@
       });
     }
 
-    /* --- [總表] 複製報到名單 --- */
+    /* --- [總表] 複製報到名單（已報到者附註 HH:mm） --- */
     function copyOverviewAttendance() {
       const now = getNowFormatted();
       const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
@@ -1676,7 +1720,10 @@
           const list = arrived.filter(d => d.team === t);
           if (list.length > 0) {
             text += `[${t}隊 - ${list.length}位]\n`;
-            text += list.map((d, i) => ` ${i + 1}. ${d.name}`).join('\n') + '\n';
+            text += list.map((d, i) => {
+              const time = checkinStore.overview[d.name];
+              return ` ${i + 1}. ${d.name} (${time})`;
+            }).join('\n') + '\n';
           }
         });
       }
@@ -1716,7 +1763,7 @@
       copyToClipboard(text);
     }
 
-    /* --- [交通] 複製去程 / 回程名單 --- */
+    /* --- [交通] 複製去程 / 回程名單（已上車者附註 HH:mm） --- */
     function copyTrafficAll(direction) {
       const now = getNowFormatted();
       const isOut = (direction === 'out');
@@ -1743,13 +1790,16 @@
       if (arrived.length === 0) {
         text += `（尚無人上車）`;
       } else {
-        text += arrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+        text += arrived.map((d, i) => {
+          const time = checkinStore[storeKey][d.name];
+          return `${i + 1}. ${d.name} (${time})`;
+        }).join('\n');
       }
 
       copyToClipboard(text);
     }
 
-    /* --- [餐飲] 複製該餐廳名單 --- */
+    /* --- [餐飲] 複製該餐廳名單（已入席者附註 HH:mm） --- */
     function copyDiningAttendance(restaurant) {
       const now = getNowFormatted();
       const activeMembers = rawDirectoryData.filter(d => !isDriver(d));
@@ -1771,13 +1821,16 @@
       if (arrived.length === 0) {
         text += `（尚無人入席）`;
       } else {
-        text += arrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+        text += arrived.map((d, i) => {
+          const time = checkinStore.dining[d.name];
+          return `${i + 1}. ${d.name} (${time})`;
+        }).join('\n');
       }
 
       copyToClipboard(text);
     }
 
-    /* --- [住宿] 複製該住宿點名單 --- */
+    /* --- [住宿] 複製該住宿點名單（已抵達者附註 HH:mm） --- */
     function copyLodgingAttendance(hotel) {
       const now = getNowFormatted();
       const members = rawDirectoryData.filter(d => (d.hotel || '').includes(hotel));
@@ -1798,7 +1851,10 @@
       if (arrived.length === 0) {
         text += `（尚無人抵達）`;
       } else {
-        text += arrived.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+        text += arrived.map((d, i) => {
+          const time = checkinStore.lodging[d.name];
+          return `${i + 1}. ${d.name} (${time})`;
+        }).join('\n');
       }
 
       copyToClipboard(text);
